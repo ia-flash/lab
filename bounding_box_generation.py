@@ -93,9 +93,7 @@ if __name__ == '__main__':
 
     from dss.api import read_dataframe, write_dataframe
 
-    from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT,
-                PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
-
+    from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
 
     dataset_name = 'img_x_MIF'
 
@@ -117,7 +115,7 @@ if __name__ == '__main__':
                     'parking_meter','bench']
 
     # cached the dataset as csv
-    dataset_path = os.path.join(DSS_DIR,'dataset_name.csv')
+    dataset_path = os.path.join(DSS_DIR,'{}.csv'.format(dataset_name))
     if not os.path.isfile(dataset_path):
 
         img_x_MIF_df = read_dataframe(API_KEY_VIT,DSS_HOST,PROJECT_KEY_VIT,dataset_name)
