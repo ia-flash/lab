@@ -1,0 +1,27 @@
+version: '2.3'
+services:
+  torch-notebook:
+    container_name: ${USER}_iaflash
+    build: 
+      context: ./docker/torch-notebook
+      args:
+        - http_proxy=${http_proxy}
+        - https_proxy=${https_proxy}
+    runtime: nvidia
+    env_file:
+      - docker/env.list
+    environment:
+     - NVIDIA_VISIBLE_DEVICES=2
+     - http_proxy=${http_proxy}
+     - https_proxy=${http_proxy}
+     - no_proxy=${no_proxy}
+    ports:
+     - "8889:8888"
+     - "10001:10000"
+    volumes:
+     - /data:/data
+     - /home/dss:/dss
+     - /home/model:/model
+     - /home/notebooks:/workspace/
+     - ./:/workspace/iaflash
+    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=./ --config=/workspace/.juypter "
