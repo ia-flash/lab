@@ -1,7 +1,7 @@
 version: '2.3'
 services:
-  torch-notebook:
-    container_name: ${USER}_iaflash
+   torch-notebook:
+    container_name: ${USER}-iaflash
     build: 
       context: ./docker/torch-notebook
       args:
@@ -16,12 +16,12 @@ services:
      - https_proxy=${http_proxy}
      - no_proxy=${no_proxy}
     ports:
-     - "8889:8888"
-     - "10001:10000"
+     - "${port}:8888"
     volumes:
      - /data:/data
      - /home/dss:/dss
      - /home/model:/model
-     - /home/notebooks:/workspace/
+     - /home/notebooks:/workspace
      - ./:/workspace/iaflash
-    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=./ --config=/workspace/.juypter "
+     - /home/notebooks/.jupyter:/root/.jupyter
+    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=./"
