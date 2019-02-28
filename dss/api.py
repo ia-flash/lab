@@ -5,6 +5,43 @@ from io import StringIO
 import vertica_python
 #import vertica_db_client
 
+def read_dataframe_post(apiKey,dss_host,keyProject,dataset_name):
+    """
+    Load pandas dataframe from dss db
+    Args:
+        Connexion params
+    """
+    print('Request REST DSS api')
+    req3 = """http://{apiKey}:@{dss_host}/public/api/projects/{keyProject}/datasets/{dataset_name}/data""".format(
+                apiKey=apiKey,
+                dss_host=dss_host,
+                keyProject=keyProject,
+                dataset_name=dataset_name
+                )
+
+    headers = {
+            'content-type': 'application/json'
+            }
+
+    r3 = requests.post(req3, headers=headers, json={
+        "format": "tsv-excel-header",
+        "filter": "DI_StatutDossier = 4",
+        "sampling": {
+            "sampling" : 'head',
+            "limit" : 10
+            },
+        "columns": [
+            "CG_ModeleVehicule",
+            "CG_marque_modele",
+            "DI_StatutDossier"
+            ],
+        })
+    #print(r3.text)
+    sio = StringIO(r3.content.decode('utf-8'))
+    df = pd.read_csv(sio, sep="\t")
+
+    return df
+
 def read_dataframe(apiKey,dss_host,keyProject,dataset_name):
     """
     Load pandas dataframe from dss db
@@ -82,15 +119,21 @@ def write_dataframe(host,keyProject,dataset_name,df):
 
 def test_read_dataframe():
 
-    apiKey = 'g6A3LunBOqufXeNV08rO1WWlj0BUDptz'
-    dss_host = 'algo2.datalab.minint.fr'
-    keyProject = 'REFERENTIELMARQUESMODELES'
-    dataset_name = 'esiv_by_cnit_clean'
+    #apiKey = 'g6A3LunBOqufXeNV08rO1WWlj0BUDptz'
+    apiKey = 'kANcJMHYaFvIxcMdvtEHpa3HpiZHYh8O'
+    dss_host = '192.168.4.30:10000'
+    #keyProject = 'REFERENTIELMARQUESMODELES'
+    keyProject = 'VIT'
+    #dataset_name = 'esiv_by_cnit_clean'
+    dataset_name = 'CarteGrise_class'
 
-    df = read_dataframe(apiKey,dss_host,keyProject,dataset_name)
+    df = read_dataframe_post(apiKey,dss_host,keyProject,dataset_name)
+    #df = read_dataframe(apiKey,dss_host,keyProject,dataset_name)
     print(df.head())
 
-    assert df.shape[0]>10000
+    ##df.iloc[:10000].to_csv('./bbox_small.csv', index=False)
+    #df.to_csv('./label.csv', index=False)
+    ##assert df.shape[0]>10000
 
 def test_write_dataframe():
     """
@@ -123,6 +166,6 @@ def test_write_dataframe():
     assert True
 
 if __name__ == "__main__":
-    test_write_dataframe()
+    #test_write_dataframe()
 
     test_read_dataframe()
