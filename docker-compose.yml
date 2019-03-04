@@ -8,15 +8,18 @@ services:
         - http_proxy=${http_proxy}
         - https_proxy=${https_proxy}
     runtime: nvidia
+    ipc: host
+    cpus: 8
     env_file:
       - docker/env.list
     environment:
-     - NVIDIA_VISIBLE_DEVICES=2
+     - NVIDIA_VISIBLE_DEVICES=1,2
+     - TORCH_MODEL_ZOO=/model
      - http_proxy=${http_proxy}
      - https_proxy=${http_proxy}
      - no_proxy=${no_proxy}
     ports:
-     - "${port}:8888"
+     - "8887:8888"
     volumes:
      - /data:/data
      - /home/dss:/dss
