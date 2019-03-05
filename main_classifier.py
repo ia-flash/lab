@@ -21,6 +21,8 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
+from custom_generator import DatasetDataframe, Crop
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -211,11 +213,10 @@ def main_worker(gpu, ngpus_per_node, args):
                                      std=[0.229, 0.224, 0.225])
 
     # iterate images
-    train_dataset = datasets.ImageFolder(
+    train_dataset = DatasetDataframe(
         traindir,
         transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            #transforms.RandomHorizontalFlip(),
+            Crop(),
             transforms.ToTensor(),
             normalize,
         ]))

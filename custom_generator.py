@@ -1,4 +1,6 @@
 import torch.utils.data as data
+from torchvision.transforms import transforms
+from torchvision.transforms.functional import to_tensor
 
 from PIL import Image
 
@@ -49,6 +51,89 @@ def make_dataset(dir, class_to_idx, extensions):
                     images.append(item)
 
     return images
+
+
+class DatasetDataframe(data.Dataset):
+    """A dataset using a dataframe  ::
+
+        img | cords | class
+
+    Args:
+        root (string): Root directory path.
+        loader (callable): A function to load a sample given its path.
+        extensions (list[string]): A list of allowed extensions.
+        transform (callable, optional): A function/transform that takes in
+            a sample and returns a transformed version.
+            E.g, ``transforms.RandomCrop`` for images.
+        target_transform (callable, optional): A function/transform that takes
+            in the target and transforms it.
+
+     Attributes:
+        classes (list): List of the class names.
+        class_to_idx (dict): Dict with items (class_name, class_index).
+        samples (list): List of (sample path, class_index) tuples
+        targets (list): The class_index value for each image in the dataset
+    """
+
+    def __init__(self, root_dir, df, transform=None, target_transform=None):
+        self.cords_frame = df
+        self.root_dir = root_dir
+        self.samples = list(zip(df['img_path'],df['class'],df[['x1','y1','x2','y2']].values.tolist()))
+        if len(df) == 0:
+            raise(RuntimeError("Found 0 files in dataframe"))
+
+        self.transform = transform
+        self.target_transform = target_transform
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+        path, target, coords = self.samples[index] # coords [x1,y1,x2,y2]
+        sample = self.loader(os.path.join(self.root_dir, path))
+        if self.transform is not None:
+            sample = self.transform(sample, coords)
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        #return sample, target
+        cords = [self.cords_frame.iloc[index]['x1'],
+                  self.cords_frame.iloc[index]['y1'],
+                  self.cords_frame.iloc[index]['x2'],
+                  self.cords_frame.iloc[index]['y2']]
+
+        return sample, target
+
+    def __len__(self):
+        return len(self.cords_frame)
+
+    def __repr__(self):
+        fmt_str = 'Dataset ' + self.__class__.__name__ + '\n'
+        fmt_str += '    Number of datapoints: {}\n'.format(self.__len__())
+        fmt_str += '    Root Location: {}\n'.format(self.root_dir)
+        tmp = '    Transforms (if any): '
+        fmt_str += '{0}{1}\n'.format(tmp, self.transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
+        tmp = '    Target Transforms (if any): '
+        fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
+        return fmt_str
+
+
+class Crop(object):
+    """Rescale the image in a sample to a given size.
+
+    Args:
+        output_size (tuple or int): Desired output size. If tuple, output is
+            matched to output_size. If int, smaller of image edges is matched
+            to output_size keeping aspect ratio the same.
+    """
+    def __call__(self, sample, coords):
+        sample = sample[coords[1]: coords[3],
+                      coords[0]: coords[2]]
+        return sample
 
 
 class DatasetFolder(data.Dataset):
