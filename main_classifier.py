@@ -7,6 +7,7 @@ import warnings
 import sys
 
 import numpy as np
+import pandas as pd
 
 import torch
 import torch.nn as nn
@@ -29,7 +30,8 @@ model_names = sorted(name for name in models.__dict__
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
-                    help='path to dataset')
+                    help='path to csv dataset')
+
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -118,11 +120,30 @@ def main():
 
 
 def main_worker(gpu, ngpus_per_node, args):
+
+    from environment import ROOT_DIR
+
+    num_classes = 10
+
     global best_acc1
     args.gpu = gpu
 
-    if args.gpu is not None:
-        print("Use GPU: {} for training".format(args.gpu))
+    # preload data
+    traindir = os.path.join(args.data, 'train.csv')
+    valdir = os.path.join(args.data, 'val.csv')
+
+    dftrain = pd.read_csv(traindir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
+    dftrain = dftrain[dftrain.target<num_classes]
+    dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
+    dfval = dfval[dfval.target<num_classes]
+
+    print('%s Images in the train set'%dftrain.shape[0])
+    print('%s Images in the val set'%dfval.shape[0])
+
+    class_weights = float(dftrain.shape[0]) / dftrain.groupby('target').size().sort_index()
+    class_weights = torch.FloatTensor(class_weights.values)
+
+    assert set(range(num_classes)).issubset(dftrain['target'].unique())
 
     if args.distributed:
         if args.dist_url == "env://" and args.rank == -1:
@@ -149,7 +170,7 @@ def main_worker(gpu, ngpus_per_node, args):
     #    param.requires_grad = False
         # Parameters of newly constructed modules have requires_grad=True by default
 
-    model.fc = nn.Linear(512, 10) # assuming that the fc7 layer has 512 neurons, otherwise change it
+    model.fc = nn.Linear(512, num_classes) # assuming that the fc7 layer has 512 neurons, otherwise change it
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -181,7 +202,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    criterion = nn.CrossEntropyLoss(class_weights).cuda(args.gpu)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -206,17 +227,21 @@ def main_worker(gpu, ngpus_per_node, args):
 
     cudnn.benchmark = True
 
-    # Data loading code
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
+    if args.gpu is not None:
+
+        print("Use GPU: {} for training".format(args.gpu))
+
+    # Data Loading Code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-
+    crop = Crop()
     # iterate images
     train_dataset = DatasetDataframe(
-        traindir,
+        ROOT_DIR,
+        dftrain,
         transforms.Compose([
-            Crop(),
+            crop,
+            transforms.Resize([224,224]),
             transforms.ToTensor(),
             normalize,
         ]))
@@ -233,9 +258,9 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+        DatasetDataframe(ROOT_DIR, dfval, transforms.Compose([
+            crop,
+            transforms.Resize([224,224]),
             transforms.ToTensor(),
             normalize,
         ])),
@@ -422,6 +447,37 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+def create_dataframe():
+
+    from dss.api import read_dataframe
+
+    from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT,PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
+
+    dataset_name = 'bbox_marque_modele_class'
+    conditions = ''
+    #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
+    columns = ['path','img_name','x1','y1','x2','y2','score','_rank']
+
+    limit = 1e5
+    sampling = 0.1
+    #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
+
+    df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name,columns,conditions,limit,sampling)
+
+    df = df[df.notnull()]
+
+    CARS_DIR = '/data/cars/csv'
+    shutil.rmtree(CARS_DIR)
+    os.makedirs(CARS_DIR,exist_ok=True)
+
+    df['img_path'] = df['path'] +'/' + df['img_name']
+    df.rename(columns={'_rank':'target'},inplace=True)
+    cols = ['img_path','target','x1','y1','x2','y2','score']
+
+    df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(CARS_DIR,'train.csv'), index=False)
+    df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(CARS_DIR,'val.csv'), index=False)
+
+    # create class
 
 def create_simlink():
 
@@ -475,11 +531,12 @@ def create_simlink():
     return
 
 if __name__ == '__main__':
+    create_dataframe()
     #create_simlink()
     main()
 
 """
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars/csv
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
 
 """

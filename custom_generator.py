@@ -9,6 +9,39 @@ import os.path
 import sys
 
 
+IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', 'webp']
+
+
+def pil_loader(path):
+    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
+    with open(path, 'rb') as f:
+        img = Image.open(f)
+        return img.convert('RGB')
+
+
+def accimage_loader(path):
+    import accimage
+    try:
+        return accimage.Image(path)
+    except IOError:
+        # Potentially a decoding problem, fall back to PIL.Image
+        return pil_loader(path)
+
+
+def default_loader(path):
+    from torchvision import get_image_backend
+    if get_image_backend() == 'accimage':
+        return accimage_loader(path)
+    else:
+        return pil_loader(path)
+
+"""
+def crop_loader(path, coords):
+    import accimage
+    return accimage.Image(path).crop(coords)
+"""
+
+
 def has_file_allowed_extension(filename, extensions):
     """Checks if a file is an allowed extension.
 
@@ -75,15 +108,16 @@ class DatasetDataframe(data.Dataset):
         targets (list): The class_index value for each image in the dataset
     """
 
-    def __init__(self, root_dir, df, transform=None, target_transform=None):
+    def __init__(self, root_dir, df, transform=None, loader=default_loader, target_transform=None):
         self.cords_frame = df
         self.root_dir = root_dir
-        self.samples = list(zip(df['img_path'],df['class'],df[['x1','y1','x2','y2']].values.tolist()))
+        self.samples = list(zip(df['img_path'],df['target'],df[['x1','y1','x2','y2']].values.tolist()))
         if len(df) == 0:
             raise(RuntimeError("Found 0 files in dataframe"))
 
         self.transform = transform
         self.target_transform = target_transform
+        self.loader = loader
 
     def __getitem__(self, index):
         """
@@ -94,17 +128,15 @@ class DatasetDataframe(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, target, coords = self.samples[index] # coords [x1,y1,x2,y2]
+
         sample = self.loader(os.path.join(self.root_dir, path))
+
+        args = (sample, coords)
+
         if self.transform is not None:
-            sample = self.transform(sample, coords)
+            sample = self.transform(args)
         if self.target_transform is not None:
             target = self.target_transform(target)
-
-        #return sample, target
-        cords = [self.cords_frame.iloc[index]['x1'],
-                  self.cords_frame.iloc[index]['y1'],
-                  self.cords_frame.iloc[index]['x2'],
-                  self.cords_frame.iloc[index]['y2']]
 
         return sample, target
 
@@ -130,9 +162,10 @@ class Crop(object):
             matched to output_size. If int, smaller of image edges is matched
             to output_size keeping aspect ratio the same.
     """
-    def __call__(self, sample, coords):
-        sample = sample[coords[1]: coords[3],
-                      coords[0]: coords[2]]
+    def __call__(self, params):
+        sample, coords = params
+        sample = sample.crop(coords)#[coords[1]: coords[3],
+                      #coords[0]: coords[2]]
         return sample
 
 
@@ -234,39 +267,6 @@ class DatasetFolder(data.Dataset):
         tmp = '    Target Transforms (if any): '
         fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
         return fmt_str
-
-
-IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', 'webp']
-
-
-def pil_loader(path):
-    # open path as file to avoid ResourceWarning (https://github.com/python-pillow/Pillow/issues/835)
-    with open(path, 'rb') as f:
-        img = Image.open(f)
-        return img.convert('RGB')
-
-
-def accimage_loader(path):
-    import accimage
-    try:
-        return accimage.Image(path)
-    except IOError:
-        # Potentially a decoding problem, fall back to PIL.Image
-        return pil_loader(path)
-
-
-def default_loader(path):
-    from torchvision import get_image_backend
-    if get_image_backend() == 'accimage':
-        return accimage_loader(path)
-    else:
-        return pil_loader(path)
-
-"""
-def crop_loader(path, coords):
-    import accimage
-    return accimage.Image(path).crop(coords)
-"""
 
 
 class ImageFolder(DatasetFolder):
