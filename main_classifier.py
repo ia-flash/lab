@@ -8,6 +8,10 @@ import sys
 
 import numpy as np
 import pandas as pd
+import json
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import torch
 import torch.nn as nn
@@ -123,8 +127,6 @@ def main_worker(gpu, ngpus_per_node, args):
 
     from environment import ROOT_DIR
 
-    num_classes = 10
-
     global best_acc1
     args.gpu = gpu
 
@@ -133,17 +135,24 @@ def main_worker(gpu, ngpus_per_node, args):
     valdir = os.path.join(args.data, 'val.csv')
 
     dftrain = pd.read_csv(traindir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
-    dftrain = dftrain[dftrain.target<num_classes]
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
-    dfval = dfval[dfval.target<num_classes]
+
+    dftrain['target'] = dftrain['target'].astype(int)
+    dfval['target'] = dfval['target'].astype(int)
+
+    args.num_classes = dftrain['target'].unique().shape[0]
+
+    filename = os.path.join(args.data, 'idx_to_class.json')
+    with open(filename) as json_data:
+        d = json.load(json_data)
+        args.all_categories = [i for i in d.values()]
 
     print('%s Images in the train set'%dftrain.shape[0])
     print('%s Images in the val set'%dfval.shape[0])
+    print('%s Classes'%args.num_classes)
 
     class_weights = float(dftrain.shape[0]) / dftrain.groupby('target').size().sort_index()
     class_weights = torch.FloatTensor(class_weights.values)
-
-    assert set(range(num_classes)).issubset(dftrain['target'].unique())
 
     if args.distributed:
         if args.dist_url == "env://" and args.rank == -1:
@@ -170,7 +179,7 @@ def main_worker(gpu, ngpus_per_node, args):
     #    param.requires_grad = False
         # Parameters of newly constructed modules have requires_grad=True by default
 
-    model.fc = nn.Linear(512, num_classes) # assuming that the fc7 layer has 512 neurons, otherwise change it
+    model.fc = nn.Linear(512, args.num_classes) # assuming that the fc7 layer has 512 neurons, otherwise change it
 
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -330,6 +339,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         # measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        # confusion matrix
         losses.update(loss.item(), input.size(0))
         top1.update(acc1[0], input.size(0))
         top5.update(acc5[0], input.size(0))
@@ -360,6 +370,7 @@ def validate(val_loader, model, criterion, args):
     losses = AverageMeter()
     top1 = AverageMeter()
     top5 = AverageMeter()
+    confusion_matrix = torch.zeros(args.num_classes, args.num_classes)
 
     # switch to evaluate mode
     model.eval()
@@ -377,9 +388,34 @@ def validate(val_loader, model, criterion, args):
 
             # measure accuracy and record loss
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
+
+            # confusion matrix
+            confusion = calculate_cm(output, target, args.num_classes)
+
+            # accuracy
             losses.update(loss.item(), input.size(0))
             top1.update(acc1[0], input.size(0))
             top5.update(acc5[0], input.size(0))
+            confusion_matrix += confusion
+
+            # Set up plot
+            fig = plt.figure(figsize=(20,20))
+            ax = fig.add_subplot(111)
+            im = ax.matshow(confusion_matrix.numpy())
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes("right", size="2%", pad=0.05)
+            plt.colorbar(im, cax=cax)
+
+            # Set up axes
+            ax.set_xticklabels([''] + args.all_categories, rotation=90)
+            ax.set_yticklabels([''] + args.all_categories)
+
+            # Force label at every tick
+            ax.xaxis.set_major_locator(MultipleLocator(1))
+            ax.yaxis.set_major_locator(MultipleLocator(1))
+
+            filename = os.path.join(args.data, 'confusion.jpg')
+            fig.savefig(filename)
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -393,6 +429,29 @@ def validate(val_loader, model, criterion, args):
                       'Acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
+
+        # Normalize by dividing every row by its sum
+        for i in range(args.num_classes):
+            confusion_matrix[i] = confusion_matrix[i] / confusion_matrix[i].sum()
+
+        # Set up plot
+        fig = plt.figure(figsize=(20,20))
+        ax = fig.add_subplot(111)
+        im = ax.matshow(confusion_matrix.numpy())
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="2%", pad=0.05)
+        plt.colorbar(im, cax=cax)
+
+        # Set up axes
+        ax.set_xticklabels([''] + args.all_categories, rotation=90)
+        ax.set_yticklabels([''] + args.all_categories)
+
+        # Force label at every tick
+        ax.xaxis.set_major_locator(MultipleLocator(1))
+        ax.yaxis.set_major_locator(MultipleLocator(1))
+
+        filename = os.path.join(args.data, 'confusion.jpg')
+        fig.savefig(filename)
 
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
@@ -447,6 +506,18 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
+
+def calculate_cm(output, target, num_classes):
+    """Calculate confussion matrix"""
+    with torch.no_grad():
+        confusion = torch.zeros(num_classes, num_classes)
+        _, preds = torch.max(output, 1)
+        for t, p in zip(target.view(-1), preds.view(-1)):
+                confusion[t.long(), p.long()] += 1
+
+        return confusion
+
+
 def create_dataframe():
 
     from dss.api import read_dataframe
@@ -476,6 +547,9 @@ def create_dataframe():
 
     df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(CARS_DIR,'train.csv'), index=False)
     df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(CARS_DIR,'val.csv'), index=False)
+    df[cols].iloc[:int(len(df)*0.8)].to_csv(os.path.join(CARS_DIR,'train_cr.csv'), index=False)
+    df[cols].iloc[int(len(df)*0.8):int(len(df)*0.9)].to_csv(os.path.join(CARS_DIR,'val_cr.csv'), index=False)
+    df[cols].iloc[int(len(df)*0.9):].to_csv(os.path.join(CARS_DIR,'test_cr.csv'), index=False)
 
     # create class
 
@@ -531,12 +605,13 @@ def create_simlink():
     return
 
 if __name__ == '__main__':
-    create_dataframe()
+    #create_dataframe()
     #create_simlink()
     main()
 
 """
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars/csv
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 --evaluate --resume /model/checkpoint.pth.tar  /model/resnet18-100
 
 """
