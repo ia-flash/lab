@@ -13,6 +13,7 @@ RUN cat setup.py
 RUN /opt/conda/bin/python setup.py install
 
 RUN pip install pandas vertica-python
+RUN pip install flask
 WORKDIR /workspace
 # to launch the service:
 #jupyter notebook --ip=0.0.0.0 --no-browser --allow-root

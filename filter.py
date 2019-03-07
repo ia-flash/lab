@@ -6,26 +6,28 @@ import time
 import warnings
 import sys
 import json
+import pandas as pd
 
-from dss.api import read_dataframe
 from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT,PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
+from dss.api import read_dataframe
 
-parser = argparse.ArgumentParser(description='Filter Dataset From DSS and Write it')
 
 dataset_name = 'bbox_marque_modele_class'
 columns = ['path','img_name','x1','y1','x2','y2','score','_rank','modele','marque']
 limit = 1e8
 sampling = 0.1
 radar_type = {
-        'ETF' : 'equipement terrain embarqu',
+        'ETE' : 'equipement terrain embarqu',
+        'ETF' : 'equipement terrain fixe',
         'ETC' : 'equipement terrain chantier',
         'ETVM' : 'equipement terrain vitesse moyenne',
         'ETM' : 'equipement terrain mobile',
         'ETVLPL' : 'equipement terrain discriminant pl vl'
         }
 
+parser = argparse.ArgumentParser(description='Filter Dataset From DSS and Write it')
 
-parser.add_argument('dir', metavar='DIR',
+parser.add_argument('--dir', metavar='DIR',
                     help='path to csv dataset')
 
 parser.add_argument('--keep',dest='keep',action='store_true',
@@ -43,7 +45,7 @@ parser.add_argument( '--modele', metavar='MODELE',type=str, nargs='+',
 
 parser.add_argument('--sens', metavar='SENS DETECTION',type=str, nargs='+',
                     choices=['ELOI','RAPP','BI-DIRECTIONNEL'],
-                    help='Filter Modele',dest='sens_detect')
+                    help='Filter Modele')
 
 parser.add_argument('--radar', metavar='RADAR TYPE',type=str, nargs='+',
                     choices=radar_type.keys(),
@@ -59,6 +61,9 @@ parser.add_argument('-l', '--limit', metavar='LIMIT',type=int, default=limit,
                     help='Number of lines to keep')
 
 
+init_dict = dict(table=dataset_name,sampling=sampling,limit=limit,columns=columns)
+
+print('Read args')
 def main():
     args = parser.parse_args()
 
@@ -75,19 +80,38 @@ def main():
 
     return(args.dir)
 
-def filter(args):
+def filter(**filt_dict):
+    # init Namespace object from parser init states
+    """
+    args = parser.parse_args()
+    print (parser)
+    # overload args
+    for key, val in filt_dict.items():
+        setattr(args, key, val)
+
+    """
+    class Args:
+        def __getattr__(self, name):
+            return None
+
+    args = Args()
+
+    for key, val in init_dict.items():
+        setattr(args, key, val)
+    for key, val in filt_dict.items():
+        setattr(args, key, val)
+    
     return read_df(args)
 
 def read_df(args):
-
     conditions = ''
 
     if args.modele :
         conditions += 'modele IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
 
-    if args.sens_detect :
+    if args.sens :
         conditions += ' AND '
-        conditions += '"csa.Params_Leg.Sens_Detect" IN (%s) ' %', '.join(["'%s'"%col for col in  args.sens_detect])
+        conditions += '"csa.Params_Leg.Sens_Detect" IN (%s) ' %', '.join(["'%s'"%col for col in  args.sens])
 
     if args.radar :
         conditions += ' AND '
@@ -133,14 +157,20 @@ def write_df(args,df):
 
 
 def test_filter():
-    args = dict(modele=['CLIO','206'],
-                sampling=0.1,
-                radar=['ETF'],
-                sens)
-    filter(args)
-if __name__ == '__main__':
-    test_filter()
 
+    # Choose yout filter
+    filt_dict = dict(modele=['CLIO','MEGANE'],
+        sampling=0.1,
+        radar=['ETF'],
+        sens=['ELOI'],
+        columns=columns+['TYPEEQUIP_Libelle'],
+        limit=10)
+
+
+    df = filter(**filt_dict)
+    assert df.shape == (filt_dict['limit'],len(filt_dict['columns'])), '{} not match with query'.format(df)
+if __name__ == '__main__':
+    main()
 """
 python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
 """

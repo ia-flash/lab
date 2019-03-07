@@ -20,6 +20,7 @@ services:
      - no_proxy=${no_proxy}
     ports:
      - "8887:8888"
+     - "9997:5000"
     volumes:
      - /data:/data
      - /home/dss:/dss
