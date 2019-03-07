@@ -1,5 +1,5 @@
-
+Replace environement file for docker image
 
 ```
-mv env.list.sample env.list
+mv docker/env.list.sample docker/env.list
 ```
