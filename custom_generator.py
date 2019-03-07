@@ -118,6 +118,7 @@ class DatasetDataframe(data.Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.loader = loader
+        # self.classes =
 
     def __getitem__(self, index):
         """
@@ -152,6 +153,7 @@ class DatasetDataframe(data.Dataset):
         tmp = '    Target Transforms (if any): '
         fmt_str += '{0}{1}'.format(tmp, self.target_transform.__repr__().replace('\n', '\n' + ' ' * len(tmp)))
         return fmt_str
+
 
 
 class Crop(object):

@@ -123,7 +123,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     from environment import ROOT_DIR
 
-    num_classes = 10
+    num_classes = 99
 
     global best_acc1
     args.gpu = gpu
@@ -137,11 +137,18 @@ def main_worker(gpu, ngpus_per_node, args):
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     dfval = dfval[dfval.target<num_classes]
 
+    dftrain['target'] = dftrain['target'].astype(int)
+    dfval['target'] = dfval['target'].astype(int)
+
     print('%s Images in the train set'%dftrain.shape[0])
     print('%s Images in the val set'%dfval.shape[0])
 
     class_weights = float(dftrain.shape[0]) / dftrain.groupby('target').size().sort_index()
     class_weights = torch.FloatTensor(class_weights.values)
+
+    print(dftrain['target'].unique().shape[0])
+
+    print(np.sort(dftrain['target'].unique()))
 
     assert set(range(num_classes)).issubset(dftrain['target'].unique())
 
@@ -447,37 +454,7 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
-def create_dataframe():
 
-    from dss.api import read_dataframe
-
-    from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT,PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
-
-    dataset_name = 'bbox_marque_modele_class'
-    conditions = ''
-    #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
-    columns = ['path','img_name','x1','y1','x2','y2','score','_rank']
-
-    limit = 1e5
-    sampling = 0.1
-    #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
-
-    df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name,columns,conditions,limit,sampling)
-
-    df = df[df.notnull()]
-
-    CARS_DIR = '/data/cars/csv'
-    shutil.rmtree(CARS_DIR)
-    os.makedirs(CARS_DIR,exist_ok=True)
-
-    df['img_path'] = df['path'] +'/' + df['img_name']
-    df.rename(columns={'_rank':'target'},inplace=True)
-    cols = ['img_path','target','x1','y1','x2','y2','score']
-
-    df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(CARS_DIR,'train.csv'), index=False)
-    df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(CARS_DIR,'val.csv'), index=False)
-
-    # create class
 
 def create_simlink():
 
@@ -519,7 +496,7 @@ def create_simlink():
                 set = 'train'
             else:
                 set = 'val'
-            #print(row['path'],row['img1'])
+            #print(row['path'],1.996row['img1'])
             src = os.path.join(ROOT_DIR,row['path'],row['img1'])
             base_dst = os.path.join(CARS_DIR,set,modele)
             if not os.path.exists(base_dst):
@@ -531,12 +508,11 @@ def create_simlink():
     return
 
 if __name__ == '__main__':
-    create_dataframe()
     #create_simlink()
     main()
 
 """
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars/csv
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
 
 """
