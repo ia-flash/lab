@@ -374,6 +374,7 @@ def validate(val_loader, model, criterion, args):
     top1 = AverageMeter()
     top5 = AverageMeter()
     confusion_matrix = torch.zeros(args.num_classes, args.num_classes)
+    predictions = []
 
     # switch to evaluate mode
     model.eval()
@@ -400,6 +401,10 @@ def validate(val_loader, model, criterion, args):
             top1.update(acc1[0], input.size(0))
             top5.update(acc5[0], input.size(0))
             confusion_matrix += confusion
+
+            # save ppredictions
+            _, preds = torch.max(output, 1)
+            predictions.extend(preds.data.cpu().tolist())
 
             # Set up plot
             fig = plt.figure(figsize=(20,20))
@@ -432,6 +437,10 @@ def validate(val_loader, model, criterion, args):
                       'Acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
+
+        # Save predictions
+        filename = os.path.join(args.data, 'predictions.csv')
+        pd.DataFrame({'predictions': predictions}).to_csv(filename, index=False)
 
         # Normalize by dividing every row by its sum
         for i in range(args.num_classes):
