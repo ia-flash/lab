@@ -23,6 +23,7 @@ services:
      - "9997:5000"
     volumes:
      - /data:/data
+     - /data:/workspace/iaflash/data
      - /home/dss:/dss
      - /home/model:/model
      - /home/notebooks:/workspace
