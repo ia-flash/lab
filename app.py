@@ -11,7 +11,7 @@ from environment import ROOT_DIR
 from mmcv_patched import imshow_bboxes_custom
 from filter import filter
 WIDTH = 600
-HEIGHT = 800
+HEIGHT = 400
 
 app = Flask(__name__)
 
@@ -21,7 +21,12 @@ def image(filename):
     try:
         w = int(request.args['w'])
         h = int(request.args['h'])
-        print(request.args)
+        x1 = int(request.args['x1'])
+        y1 = int(request.args['y1'])
+        x2 = int(request.args['x2'])
+        y2 = int(request.args['y2'])
+        marque = str(request.args['marque']).lower()
+        modele = str(request.args['modele'])
     except (KeyError, ValueError):
         return send_from_directory('.', filename)
 
@@ -29,6 +34,10 @@ def image(filename):
         #im = Image.open(filename)
         im = cv2.imread(filename)
         #im.thumbnail((w, h), Image.ANTIALIAS)
+        cv2.rectangle(im, (x1, y1), (x2,y2), (0,0,255), 2)
+        text = "{}, {}".format(marque, modele)
+        cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
+            2, (0,255,0), 2)
         im = cv2.resize(im,(w, h))#,interpolation=cv2.CV_INTER_AREA)
         #io = BytesIO()
         #im.save(io, format='JPEG')
@@ -102,14 +111,11 @@ def images_csv(csvpath):
     })
 
 
-@app.route('/explore/<modele>/<status>')
-def images_explore(modele,status):
+@app.route('/explore')
+def images_explore():
     images = []
-    limit=1e3
-    df = filter(modele=[modele],status=[status],limit=limit,sampling=0.1)
+    df = filter(**request.args)
     for i, row in df.iterrows():
-        if i > limit:
-            break
         filename = os.path.join(ROOT_DIR,row['path'],row['img_name'])
         im = Image.open(filename)
         w, h = im.size
@@ -123,13 +129,18 @@ def images_explore(modele,status):
         images.append({
             'width': int(width),
             'height': int(height),
-            'src': filename
+            'src': filename,
+            'x1': row["x1"],
+            'y1': row["y1"],
+            'x2': row["x2"],
+            'y2': row["y2"],
+            'marque': row['marque'],
+            'modele': row['modele']
         })
-        i +=1
-        print(filename)
 
     return render_template("preview.html", **{
         'images': images
     })
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', threaded=True,debug=True)

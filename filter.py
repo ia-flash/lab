@@ -100,20 +100,26 @@ def filter(**filt_dict):
         setattr(args, key, val)
     for key, val in filt_dict.items():
         setattr(args, key, val)
-    
     return read_df(args)
 
 def read_df(args):
     conditions = ''
 
     if args.modele :
+        if type(args.modele) is str:
+            args.modele = args.modele.split(",")
         conditions += 'modele IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
 
     if args.sens :
-        conditions += ' AND '
+        if type(args.sens) is str:
+            args.sens = args.sens.split(",")
+        if conditions != '':
+            conditions += ' AND '
         conditions += '"csa.Params_Leg.Sens_Detect" IN (%s) ' %', '.join(["'%s'"%col for col in  args.sens])
 
     if args.radar :
+        if type(args.radar) is str:
+            args.radar = args.radar.split(",")
         conditions += ' AND '
         conditions += 'TYPEEQUIP_Libelle IN (%s) ' %', '.join(["'%s'"%radar_type[col] for col in  args.radar])
 
