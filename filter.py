@@ -14,7 +14,7 @@ from dss.api import read_dataframe
 
 dataset_name = 'bbox_marque_modele_class'
 columns = ['path','img_name','x1','y1','x2','y2','score','_rank','modele','marque']
-limit = 1e8
+limit = 1e5
 sampling = 0.1
 radar_type = {
         'ETE' : 'equipement terrain embarqu',
@@ -60,6 +60,8 @@ parser.add_argument('--sampling', metavar='SAMPLE',type=float,default=sampling,
 parser.add_argument('-l', '--limit', metavar='LIMIT',type=int, default=limit,
                     help='Number of lines to keep')
 
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                    help='evaluate model on validation set')
 
 init_dict = dict(table=dataset_name,sampling=sampling,limit=limit,columns=columns)
 
@@ -164,7 +166,10 @@ def write_df(args,df):
     cols = ['img_path','target','x1','y1','x2','y2','score']
 
     df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(args.dir,'train.csv'), index=False)
-    df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(args.dir,'val.csv'), index=False)
+    if args.evaluate:
+        df[cols].to_csv(os.path.join(args.dir,'val.csv'), index=False)
+    else:
+        df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(args.dir,'val.csv'), index=False)
 
     # create mapping
 
@@ -184,6 +189,9 @@ def test_filter():
     assert df.shape == (filt_dict['limit'],len(filt_dict['columns'])), '{} not match with query'.format(df)
 if __name__ == '__main__':
     main()
+
 """
 python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
+python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
+python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
 """
