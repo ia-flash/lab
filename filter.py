@@ -110,6 +110,13 @@ def read_df(args):
             args.modele = args.modele.split(",")
         conditions += 'modele IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
 
+    if args.status :
+        if type(args.status) is str:
+            args.status = args.status.split(",")
+        if conditions != '':
+            conditions += ' AND '
+        conditions += 'DI_StatutDossier IN ({}) '.format(', '.join([str(int(col)) for col in  args.status]))
+
     if args.sens :
         if type(args.sens) is str:
             args.sens = args.sens.split(",")
