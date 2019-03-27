@@ -424,6 +424,7 @@ def validate(val_loader, model, criterion, args):
 
             filename = os.path.join(args.data, 'confusion.jpg')
             fig.savefig(filename)
+            plt.close(fig)
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -464,6 +465,7 @@ def validate(val_loader, model, criterion, args):
 
         filename = os.path.join(args.data, 'confusion.jpg')
         fig.savefig(filename)
+        plt.close(fig)
 
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
