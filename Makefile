@@ -8,6 +8,7 @@ COMPOSE?=docker-compose -p $(PROJECT_NAME) -f docker-compose.yml
 
 export COMPOSE
 export APP_PORT
+export NOTEBOOK_PORT
 
 # this is usefull with most python apps in dev mode because if stdout is
 # buffered logs do not shows in realtime
