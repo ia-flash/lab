@@ -33,7 +33,10 @@
       {% for image in images %}
       <div class="column is-4-desktop is-12-mobile">
         <a class="image" href="{{ image.src }}">
-            <img id="myimg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="{{ image.src }}?w={{ image.width }}&amp;h={{ image.height }}&amp;x1={{image.x1}}&amp;y1={{image.y1}}&amp;x2={{image.x2}}&amp;y2={{image.y2}}&amp;text={{image.text}}" width="{{ image.width }}" height="{{ image.height }}" />
+          {{image.src}}
+            <img id="myimg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+              data-src="{{ image.src }}?meta={{image.meta}}"
+              width="{{ image.width }}" height="{{ image.height }}" />
         </a>
       </div>
       {% endfor %}

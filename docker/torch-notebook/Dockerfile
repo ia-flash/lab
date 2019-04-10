@@ -13,15 +13,10 @@ RUN cat setup.py
 RUN /opt/conda/bin/python setup.py install
 
 RUN pip install pandas vertica-python Flask Pillow
+RUN pip install scrapy
 
+RUN apt-get install jq
 WORKDIR /workspace
+
 # to launch the service:
 #jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
-
-
-#FROM jupyter/minimal-notebook
-# USER root
-# RUN useradd -ms /bin/bash journevi
-# USER journevi
-# WORKDIR /home/journevi
-

@@ -1,2 +1,5 @@
 env.list
+conf.list
 __pycache__
+*.pyc
+*.ipynb

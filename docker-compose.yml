@@ -2,7 +2,7 @@ version: '2.3'
 services:
    torch-notebook:
     container_name: ${USER}-iaflash
-    build: 
+    build:
       context: ./docker/torch-notebook
       args:
         - http_proxy=${http_proxy}

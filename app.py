@@ -20,14 +20,17 @@ app = Flask(__name__)
 @app.route('/<path:filename>')
 def image(filename):
     try:
-        w = int(request.args['w'])
-        h = int(request.args['h'])
-        x1 = int(request.args['x1'])
-        y1 = int(request.args['y1'])
-        x2 = int(request.args['x2'])
-        y2 = int(request.args['y2'])
-        text = str(request.args['text'])
+        meta = request.args['meta']
+        meta = json.loads(meta)
+        print(meta)
+        w = int(request.args['width'])
+        h = int(request.args['height'])
+        x1 = int(meta['x1'])
+        y1 = int(meta['y1'])
+        x2 = int(meta['x2'])
+        y2 = int(meta['y2'])
     except (KeyError, ValueError):
+        print('cannot access to keys')
         return send_from_directory('.', filename)
 
     try:
@@ -35,8 +38,8 @@ def image(filename):
         im = cv2.imread(filename)
         #im.thumbnail((w, h), Image.ANTIALIAS)
         cv2.rectangle(im, (x1, y1), (x2,y2), (0,0,255), 2)
-        cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
-            1, (0,255,0), 2)
+        #cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
+        #    1, (0,255,0), 2)
         im = cv2.resize(im,(w, h)) #,interpolation=cv2.CV_INTER_AREA)
         _, img_encoded = cv2.imencode('.jpg', im)
         #return Response(io.getvalue(), mimetype='image/jpeg')
@@ -79,17 +82,15 @@ def images_csv(csvpath):
         else:
             height = min(h, HEIGHT)
             width = height*aspect
-        text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], row['pred_class'], row['score'])
-        images.append({
+        #text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], row['pred_class'], row['score'])
+        dict_img = {
             'width': int(width),
             'height': int(height),
             'src': filename,
-            'x1': row["x1"],
-            'y1': row["y1"],
-            'x2': row["x2"],
-            'y2': row["y2"],
-            'text': text,
-            })
+            #'text': text,
+            }
+        dict_img.update({'meta':row.to_dict()})
+        images.append(dict_img)
 
     return render_template("preview.html", **{
         'images': images
@@ -115,13 +116,9 @@ def images_explore():
         images.append({
             'width': int(width),
             'height': int(height),
-            'src': filename,
-            'x1': row["x1"],
-            'y1': row["y1"],
-            'x2': row["x2"],
-            'y2': row["y2"],
-            'text': text
-        })
+            'src': filename
+
+        }.update(row.to_dict()))
 
     return render_template("preview.html", **{
         'images': images
