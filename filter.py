@@ -107,6 +107,10 @@ def filter(**filt_dict):
 def read_df(args):
     conditions = ''
 
+    if args.columns :
+        if type(args.columns) is str:
+            args.columns = args.columns.split(",")
+
     if args.modele :
         if type(args.modele) is str:
             args.modele = args.modele.split(",")

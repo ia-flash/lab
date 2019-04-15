@@ -35,7 +35,7 @@ def read_dataframe(apiKey,host,keyProject,dataset_name,columns=[],conditions="",
         req = """SELECT * FROM {table} {conditions}""".format(table=dataset_name,    conditions=conditions)
 
 
-    if limit > 0:
+    if int(limit) > 0:
          req += " LIMIT %s " %int(limit)
 
     print(req)

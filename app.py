@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 from PIL import Image
 import cv2
@@ -19,34 +18,38 @@ app = Flask(__name__)
 
 @app.route('/<path:filename>')
 def image(filename):
+    print(filename)
     try:
-        meta = request.args['meta']
-        meta = json.loads(meta)
-        print(meta)
-        w = int(request.args['width'])
-        h = int(request.args['height'])
-        x1 = int(meta['x1'])
-        y1 = int(meta['y1'])
-        x2 = int(meta['x2'])
-        y2 = int(meta['y2'])
-    except (KeyError, ValueError):
-        print('cannot access to keys')
+        w = int(request.args['w'])
+        h = int(request.args['h'])
+        x1 = int(float(request.args['x1']))
+        y1 = int(float(request.args['y1']))
+        x2 = int(float(request.args['x2']))
+        y2 = int(float(request.args['y2']))
+        text = str(request.args['text'])
+
+    except (KeyError, ValueError) as e:
+        print(e)
+        print('missing args')
         return send_from_directory('.', filename)
 
     try:
         #im = Image.open(filename)
-        im = cv2.imread(filename)
+        im = cv2.imread('/'+filename)
+        print(im.shape)
         #im.thumbnail((w, h), Image.ANTIALIAS)
         cv2.rectangle(im, (x1, y1), (x2,y2), (0,0,255), 2)
-        #cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
-        #    1, (0,255,0), 2)
-        im = cv2.resize(im,(w, h)) #,interpolation=cv2.CV_INTER_AREA)
+        cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
+            1, (0,255,0), 2)
+        print((x1, y1), (x2,y2))
+        im = cv2.resize(im, (w, h)) #,interpolation=cv2.CV_INTER_AREA)
         _, img_encoded = cv2.imencode('.jpg', im)
         #return Response(io.getvalue(), mimetype='image/jpeg')
         return Response(img_encoded.tobytes(), mimetype='image/jpeg')
 
     except IOError:
         abort(404)
+
 
     return send_from_directory('.', filename)
 
@@ -82,15 +85,17 @@ def images_csv(csvpath):
         else:
             height = min(h, HEIGHT)
             width = height*aspect
-        #text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], row['pred_class'], row['score'])
-        dict_img = {
+        text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], row['pred_class'], row['score'])
+        images.append({
             'width': int(width),
             'height': int(height),
             'src': filename,
-            #'text': text,
-            }
-        dict_img.update({'meta':row.to_dict()})
-        images.append(dict_img)
+            'x1': int(row["x1"]),
+            'y1': int(row["y1"]),
+            'x2': int(row["x2"]),
+            'y2': int(row["y2"]),
+            'text': text,
+            })
 
     return render_template("preview.html", **{
         'images': images
@@ -101,6 +106,7 @@ def images_csv(csvpath):
 def images_explore():
     images = []
     df = filter(**request.args)
+    print(df.head())
     for i, row in df.iterrows():
         filename = os.path.join(ROOT_DIR,row['path'],row['img_name'])
         im = Image.open(filename)
@@ -112,13 +118,22 @@ def images_explore():
         else:
             height = min(h, HEIGHT)
             width = height*aspect
-        text = "{}, {}".format(row['marque'].lower(), row['modele'])
+
+        if ('marque' in row) and ('modele' in row):
+            text = "{}, {}".format(row['marque'].lower(), row['modele'])
+        else:
+            text = 'Pas de prediction'
+
         images.append({
             'width': int(width),
             'height': int(height),
-            'src': filename
-
-        }.update(row.to_dict()))
+            'src': filename,
+            'x1': row["x1"],
+            'y1': row["y1"],
+            'x2': row["x2"],
+            'y2': row["y2"],
+            'text': text
+        })
 
     return render_template("preview.html", **{
         'images': images
