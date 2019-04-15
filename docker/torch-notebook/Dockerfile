@@ -15,7 +15,6 @@ RUN /opt/conda/bin/python setup.py install
 RUN pip install pandas vertica-python Flask Pillow
 RUN pip install scrapy
 
-RUN apt-get install jq
 WORKDIR /workspace
 
 # to launch the service:

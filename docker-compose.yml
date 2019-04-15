@@ -13,14 +13,14 @@ services:
     env_file:
       - docker/env.list
     environment:
-     - NVIDIA_VISIBLE_DEVICES=1
+     - NVIDIA_VISIBLE_DEVICES=${VISIBLE_GPU}
      - TORCH_MODEL_ZOO=/model
      - http_proxy=${http_proxy}
      - https_proxy=${http_proxy}
      - no_proxy=${no_proxy}
     ports:
-     - "8887:8888"
-     - "9997:5000"
+     - ${NOTEBOOK_PORT}:8888
+     - ${APP_PORT}:5000
     volumes:
      - /data:/data
      - /data:/workspace/iaflash/data
