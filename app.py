@@ -2,13 +2,10 @@ import os
 from PIL import Image
 import cv2
 import json
-
-from io import BytesIO
 from flask import Flask, render_template, Response, render_template_string, send_from_directory, request
 
 import pandas as pd
 from environment import ROOT_DIR
-from mmcv_patched import imshow_bboxes_custom
 from filter import filter
 WIDTH = 600
 HEIGHT = 400
@@ -18,38 +15,32 @@ app = Flask(__name__)
 
 @app.route('/<path:filename>')
 def image(filename):
-    print(filename)
-    try:
-        w = int(request.args['w'])
-        h = int(request.args['h'])
-        x1 = int(float(request.args['x1']))
-        y1 = int(float(request.args['y1']))
-        x2 = int(float(request.args['x2']))
-        y2 = int(float(request.args['y2']))
-        text = str(request.args['text'])
+    w = request.args.get('w', None)
+    h = request.args.get('h', None)
+    x1 = request.args.get('x1', None)
+    y1 = request.args.get('y1', None)
+    x2 = request.args.get('x2', None)
+    y2 = request.args.get('y2', None)
+    marque = request.args.get('marque', None)
+    modele = request.args.get('modele', None)
+    score = request.args.get('score', None)
 
-    except (KeyError, ValueError) as e:
-        print(e)
-        print('missing args')
-        return send_from_directory('.', filename)
+    text = request.args.get('text', None)
 
     try:
-        #im = Image.open(filename)
-        im = cv2.imread('/'+filename)
-        print(im.shape)
-        #im.thumbnail((w, h), Image.ANTIALIAS)
-        cv2.rectangle(im, (x1, y1), (x2,y2), (0,0,255), 2)
-        cv2.putText(im, text, (x1, y2 - 5), cv2.FONT_HERSHEY_SIMPLEX,
-            1, (0,255,0), 2)
-        print((x1, y1), (x2,y2))
-        im = cv2.resize(im, (w, h)) #,interpolation=cv2.CV_INTER_AREA)
+        im = cv2.imread(filename)
+        if x1 and x2 and y1 and y2:
+            cv2.rectangle(im, (int(x1), int(y1)), (int(x2),int(y2)), (0,0,255), 2)
+        if text:
+            cv2.putText(im, text, (int(x1), int(y2) - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+        if w and h:
+            w, h = int(w), int(h)
+            im = cv2.resize(im, (w, h))
         _, img_encoded = cv2.imencode('.jpg', im)
-        #return Response(io.getvalue(), mimetype='image/jpeg')
         return Response(img_encoded.tobytes(), mimetype='image/jpeg')
 
-    except IOError:
-        abort(404)
-
+    except Exception as e:
+        print(e)
 
     return send_from_directory('.', filename)
 
@@ -79,13 +70,11 @@ def images_csv(csvpath):
         im = Image.open(filename)
         w, h = im.size
         aspect = 1.0*w/h
-        if aspect > 1.0*WIDTH/HEIGHT:
-            width = min(w, WIDTH)
-            height = width/aspect
-        else:
-            height = min(h, HEIGHT)
-            width = height*aspect
-        text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], row['pred_class'], row['score'])
+        width = aspect * HEIGHT
+        height = HEIGHT
+
+        text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], 
+                row['pred_class'], row['score'])
         images.append({
             'width': int(width),
             'height': int(height),
@@ -112,12 +101,8 @@ def images_explore():
         im = Image.open(filename)
         w, h = im.size
         aspect = 1.0*w/h
-        if aspect > 1.0*WIDTH/HEIGHT:
-            width = min(w, WIDTH)
-            height = width/aspect
-        else:
-            height = min(h, HEIGHT)
-            width = height*aspect
+        width = aspect * HEIGHT
+        height = HEIGHT
 
         if ('marque' in row) and ('modele' in row):
             text = "{}, {}".format(row['marque'].lower(), row['modele'])
