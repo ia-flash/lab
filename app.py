@@ -30,9 +30,9 @@ def image(filename):
     try:
         im = cv2.imread(filename)
         if x1 and x2 and y1 and y2:
-            cv2.rectangle(im, (int(x1), int(y1)), (int(x2),int(y2)), (0,0,255), 2)
+            cv2.rectangle(im, (int(float(x1)), int(float(y1))), (int(float(x2)),int(float(y2))), (0,0,255), 2)
         if text:
-            cv2.putText(im, text, (int(x1), int(y2) - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+            cv2.putText(im, text, (int(float(x1)), int(float(y2)) - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
         if w and h:
             w, h = int(w), int(h)
             im = cv2.resize(im, (w, h))
@@ -105,7 +105,7 @@ def images_explore():
         height = HEIGHT
 
         if ('marque' in row) and ('modele' in row):
-            text = "{}, {}".format(row['marque'].lower(), row['modele'])
+            text = "{}, {}".format(row['marque'], row['modele'])
         else:
             text = 'Pas de prediction'
 
