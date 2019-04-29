@@ -131,8 +131,8 @@ def test_read_dataframe():
     dss_host = 'algo2.datalab.minint.fr'
     keyProject = 'REFERENTIELMARQUESMODELES'
     dataset_name = 'esiv_by_cnit_clean'
-
-    df = read_dataframe(apiKey,dss_host,keyProject,dataset_name)
+    vertica_host = '192.168.4.30'
+    df = read_dataframe(apiKey,vertica_host,keyProject,dataset_name)
     print(df.head())
 
     assert df.shape[0]>10000
@@ -168,6 +168,6 @@ def test_write_dataframe():
     assert True
 
 if __name__ == "__main__":
-    test_write_dataframe()
+    #test_write_dataframe()
 
     test_read_dataframe()

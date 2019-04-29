@@ -9,18 +9,20 @@ services:
         - https_proxy=${https_proxy}
     runtime: nvidia
     ipc: host
-    cpus: 8
+    cpus: 32
     env_file:
       - docker/env.list
     environment:
-     - NVIDIA_VISIBLE_DEVICES=${VISIBLE_GPU}
+     - NVIDIA_VISIBLE_DEVICES=0,1,2,3
      - TORCH_MODEL_ZOO=/model
      - http_proxy=${http_proxy}
      - https_proxy=${http_proxy}
      - no_proxy=${no_proxy}
     ports:
-     - ${NOTEBOOK_PORT}:8888
-     - ${APP_PORT}:5000
+     - "8887:8888"
+     - "9997:5000"
+    networks:
+     - isolated_nw
     volumes:
      - /data:/data
      - /data:/workspace/iaflash/data
@@ -30,3 +32,10 @@ services:
      - ./:/workspace/iaflash
      - /home/notebooks/.jupyter:/root/.jupyter
     command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=./"
+
+
+
+networks:
+  isolated_nw:
+    external:
+     name: isolated_nw
