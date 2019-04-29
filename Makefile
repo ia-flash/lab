@@ -28,5 +28,8 @@ stop:
 down:
 	$(COMPOSE) down --remove-orphans
 
+build:
+	$(COMPOSE) build
+
 exec:
 	$(COMPOSE) exec torch-notebook bash
