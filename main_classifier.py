@@ -375,6 +375,7 @@ def validate(val_loader, model, criterion, args):
     top5 = AverageMeter()
     confusion_matrix = torch.zeros(args.num_classes, args.num_classes)
     predictions = []
+    probabilities = []
 
     # switch to evaluate mode
     model.eval()
@@ -405,6 +406,11 @@ def validate(val_loader, model, criterion, args):
             # save ppredictions
             _, preds = torch.max(output, 1)
             predictions.extend(preds.data.cpu().tolist())
+
+            # save probabilities
+            softmax = nn.Softmax()
+            norm_output = softmax(output)
+            probabilities.extend(norm_output.data.cpu().tolist())
 
             # Set up plot
             fig = plt.figure(figsize=(20,20))
@@ -441,6 +447,10 @@ def validate(val_loader, model, criterion, args):
         # Save predictions
         filename = os.path.join(args.data, 'predictions.csv')
         pd.DataFrame({'predictions': predictions}).to_csv(filename, index=False)
+
+        # Save probabilities
+        filename = os.path.join(args.data, 'probabilities.csv')
+        pd.DataFrame(probabilities).to_csv(filename, index=False)
 
         # Normalize by dividing every row by its sum
         for i in range(args.num_classes):
@@ -588,6 +598,6 @@ if __name__ == '__main__':
 """
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 --evaluate --resume /model/checkpoint.pth.tar  /model/resnet18-100
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 --evaluate --resume /model/resnet18-100/model_best.pth.tar  /model/resnet18-100
 
 """

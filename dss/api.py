@@ -21,10 +21,10 @@ def read_dataframe(apiKey,host,keyProject,dataset_name,columns=[],conditions="",
 
     if conditions != '':
         conditions = 'WHERE %s '%conditions
-        if sampling > 0:
+        if float(sampling) > 0:
             conditions += ' AND random() < %s '% sampling
     else:
-        if sampling > 0:
+        if float(sampling) > 0:
             conditions = ' WHERE random() < %s '% sampling
 
     if len(columns)>0:

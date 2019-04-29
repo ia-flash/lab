@@ -13,7 +13,7 @@ from dss.api import read_dataframe
 
 
 dataset_name = 'bbox_marque_modele_class'
-columns = ['path','img_name','x1','y1','x2','y2','score','_rank','modele','marque']
+columns = ['path','img_name','x1','y1','x2','y2','score','modele','marque']
 limit = 1e5
 sampling = 0.1
 radar_type = {
