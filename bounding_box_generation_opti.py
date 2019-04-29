@@ -25,6 +25,13 @@ from dss.api import read_dataframe, write_dataframe
 from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
 from generator_detection import CustomDataset
 
+
+
+class_to_keep = ['person','bicycle', 'car',
+                'motorcycle','bus',
+                'truck','traffic_light','stop_sign',
+                'parking_meter','bench']
+
 def load_data(dataset_name = 'img_MIF',nrows=1e3):
     # cached the dataset as csv
     dataset_path = os.path.join(DSS_DIR,'{}.csv'.format(dataset_name))
@@ -57,6 +64,13 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
 
     return img_df
 
+def send_data(results):
+    to_save = save_result(result,
+                class_to_keep=class_to_keep,
+                dataset='coco',
+                score_thr=0.3)
+
+    return 0
 
 def load_config(modele):
 
@@ -71,7 +85,7 @@ def single_test(model, data_loader, show=False):
     results = []
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
-    for i, data in enumerate(data_loader):
+    for row, data in enumerate(dataset, data_loader):
         with torch.no_grad():
             result = model(return_loss=False, rescale=not show, **data)
         results.append(result)
@@ -83,6 +97,19 @@ def single_test(model, data_loader, show=False):
         batch_size = data['img'][0].size(0)
         for _ in range(batch_size):
             prog_bar.update()
+
+        #print(data['img_meta'][0].data )
+        # print row
+        
+        if i %100 == 0:
+            print('Send 100 rows')
+            to_save = save_result(result,
+                        class_to_keep=class_to_keep,
+                        dataset='coco',
+                        score_thr=0.3)
+            #send_data(results)
+            results = []
+
     return results
 
 
@@ -189,15 +216,12 @@ def main():
     car_dataset = CustomDataset(img_df, ROOT_DIR,**cfg.data.val)
     print('length of dataset :')
     print(len(car_dataset))
-    class_to_keep = ['person','bicycle', 'car',
-                'motorcycle','bus',
-                'truck','traffic_light','stop_sign',
-                'parking_meter','bench']
+
 
     # build modele
 
-    gpus = 4
-    workers_per_gpu = 2
+    gpus = 1
+    workers_per_gpu = 1
 
     checkpoint = '/model/%s.pth'%modele['checkpoint']
 
