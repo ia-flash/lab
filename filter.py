@@ -121,7 +121,7 @@ def read_df(args):
     if args.class_list:
         print(args.class_list)
         #class_list = pd.read_csv(os.path.join(args.dir, args.class_list))
-        class_list = pd.read_csv(os.path.join('./', args.class_list))
+        class_list = pd.read_csv(os.path.join('./', args.class_list), header=None)
         conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
 
     if args.nb_modeles:
