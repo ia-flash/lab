@@ -40,6 +40,13 @@ parser.add_argument('--status', metavar='STATUS DOSSIER',type=int, nargs='+',
                     choices=range(60),
                     help='Filter DI_StatutDossier')
 
+parser.add_argument( '--nb_modeles', metavar='NOMBRE MODELES',type=int,
+                    help='Filter Nombre de Modele')
+
+parser.add_argument( '--class_list', metavar='LIST CLASSES',type=str,
+                    help='Classes to use')
+
+
 parser.add_argument( '--modele', metavar='MODELE',type=str, nargs='+',
                     help='Filter Modele')
 
@@ -75,10 +82,10 @@ def main():
 
         os.makedirs(args.dir, exist_ok=True)
 
-        df = read_df(args)
-        print('Retrieve %s rows'%df.shape[0])
-        df = create_mapping(args,df)
-        write_df(args,df)
+    df = read_df(args)
+    print('Retrieve %s rows'%df.shape[0])
+    df = create_mapping(args,df)
+    write_df(args,df)
 
     return(args.dir)
 
@@ -110,6 +117,21 @@ def read_df(args):
     if args.columns :
         if type(args.columns) is str:
             args.columns = args.columns.split(",")
+
+    if args.class_list:
+        print(args.class_list)
+        #class_list = pd.read_csv(os.path.join(args.dir, args.class_list))
+        class_list = pd.read_csv(os.path.join('./', args.class_list))
+        conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
+
+    if args.nb_modeles:
+        if type(args.nb_modeles) is str:
+            args.nb_modeles = args.nb_modeles.split(",")
+        group_req = "modele ILIKE modele GROUP BY modele ORDER BY COUNT(modele) DESC LIMIT {};".format(args.nb_modeles)
+        df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,
+            args.table,['modele, COUNT(modele)'],group_req)
+        df['modele'].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
+        conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in df['modele'].tolist()]))
 
     if args.modele :
         if type(args.modele) is str:
@@ -145,7 +167,8 @@ def read_df(args):
     return df
 
 def create_mapping(args,df):
-    df_class = df.groupby('_rank',sort=True)
+    #df_class = df.groupby('_rank',sort=True)
+    df_class = df.groupby('modele',sort=True)
 
     i = 0
     idx_to_class = {}
@@ -195,7 +218,10 @@ if __name__ == '__main__':
     main()
 
 """
+python filter.py --table CarteGrise_norm_melt_joined --status 4,6,13 -l 10 --dir /model/test/
 python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
+python filter.py --table CarteGrise_norm_melt_joined --status 4 5 13 --dir /model/test2 --class_list classes.csv --keep --sampling 0 --limit 0
+python filter.py --table CarteGrise_norm_melt_joined --status 4 5 13 --dir /model/test2 --nb_modeles 140
 """
