@@ -121,7 +121,7 @@ def read_df(args):
     if args.class_list:
         print(args.class_list)
         #class_list = pd.read_csv(os.path.join(args.dir, args.class_list))
-        class_list = pd.read_csv(os.path.join('./', args.class_list))
+        class_list = pd.read_csv(os.path.join('./', args.class_list), header=None)
         conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
 
     if args.nb_modeles:
@@ -157,6 +157,9 @@ def read_df(args):
             args.radar = args.radar.split(",")
         conditions += ' AND '
         conditions += 'TYPEEQUIP_Libelle IN (%s) ' %', '.join(["'%s'"%radar_type[col] for col in  args.radar])
+
+    conditions += ' AND '
+    conditions += "x1 IS NOT NULL "
 
     #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
     #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
@@ -222,6 +225,6 @@ python filter.py --table CarteGrise_norm_melt_joined --status 4,6,13 -l 10 --dir
 python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
-python filter.py --table CarteGrise_norm_melt_joined --status 4 5 13 --dir /model/test2 --class_list classes.csv --keep --sampling 0 --limit 0
-python filter.py --table CarteGrise_norm_melt_joined --status 4 5 13 --dir /model/test2 --nb_modeles 140
+python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --class_list classes.csv --keep --sampling 0 --limit 0
+python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --nb_modeles 140
 """
