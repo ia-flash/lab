@@ -273,4 +273,5 @@ python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /mode
 
 # resnet18-102
 python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-102 --nb_modeles 150 --score 0.95 --sampling 0.001 --where (TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')
+
 """

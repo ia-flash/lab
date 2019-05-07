@@ -27,6 +27,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 from custom_generator import DatasetDataframe, Crop
+from simple_sampler import DistributedSimpleSampler
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -87,6 +88,20 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 
 best_acc1 = 0
 
+def gather_evaluation(filename, gpu):
+    base_filename, file_extension = os.path.splitext(filename)
+    df = pd.DataFrame()
+    print(gpu)
+    for i in range(gpu) :
+        filename_i = base_filename + '_%s'%i + file_extension
+        print('read %s'%filename_i)
+        df_i = pd.read_csv(filename_i,header=None)
+        df = pd.concat([df, df_i], ignore_index=True,axis=0)
+        os.remove(filename_i)
+
+    df.to_csv(filename,  header=False, index=False)
+    return df
+
 
 def main():
     args = parser.parse_args()
@@ -123,6 +138,42 @@ def main():
         main_worker(args.gpu, ngpus_per_node, args)
 
 
+    # gather all predictions
+    predictions = gather_evaluation(os.path.join(args.data, 'predictions.csv'), ngpus_per_node)
+    probabilities = gather_evaluation(os.path.join(args.data, 'probabilities.csv'), ngpus_per_node)
+    targets = gather_evaluation(os.path.join(args.data, 'targets.csv'), ngpus_per_node)
+    indices = gather_evaluation(os.path.join(args.data, 'indices.csv'), ngpus_per_node)
+
+    # confusion_matrix
+    confusion = calculate_cm(probabilities.values, targets.values)
+    print(confusion)
+    """
+    # Normalize by dividing every row by its sum
+    for i in range(args.num_classes):
+        confusion_matrix[i] = confusion_matrix[i] / confusion_matrix[i].sum()
+
+
+    # Set up plot
+    fig = plt.figure(figsize=(20,20))
+    ax = fig.add_subplot(111)
+    im = ax.matshow(confusion_matrix.numpy())
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="2%", pad=0.05)
+    plt.colorbar(im, cax=cax)
+
+    # Set up axes
+    ax.set_xticklabels([''] + args.all_categories, rotation=90)
+    ax.set_yticklabels([''] + args.all_categories)
+
+    # Force label at every tick
+    ax.xaxis.set_major_locator(MultipleLocator(1))
+    ax.yaxis.set_major_locator(MultipleLocator(1))
+
+    filename = os.path.join(args.data, 'confusion_%s.jpg'%args.gpu)
+    fig.savefig(filename)
+    plt.close(fig)
+    """
+
 def main_worker(gpu, ngpus_per_node, args):
 
     from environment import ROOT_DIR
@@ -143,13 +194,14 @@ def main_worker(gpu, ngpus_per_node, args):
     dftrain['target'] = dftrain['target'].astype(int)
     dfval['target'] = dfval['target'].astype(int)
 
-    args.num_classes = dftrain['target'].unique().shape[0]
 
     filename = os.path.join(args.data, 'idx_to_class.json')
     with open(filename) as json_data:
         d = json.load(json_data)
         args.all_categories = [i for i in d.values()]
 
+    args.num_classes = dftrain['target'].unique().shape[0]
+    #args.num_classes = len(args.all_categories)
     dftrain['target'] = dftrain['target'].astype(int)
     dfval['target'] = dfval['target'].astype(int)
 
@@ -158,6 +210,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print('%s Classes'%args.num_classes)
 
     class_weights = float(dftrain.shape[0]) / dftrain.groupby('target').size().sort_index()
+    print(class_weights.shape)
     class_weights = torch.FloatTensor(class_weights.values)
 
     if args.distributed:
@@ -240,6 +293,8 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
 
+
+
     cudnn.benchmark = True
 
     if args.gpu is not None:
@@ -261,17 +316,35 @@ def main_worker(gpu, ngpus_per_node, args):
             normalize,
         ]))
 
+    val_dataset = DatasetDataframe(
+        ROOT_DIR,
+        dfval,
+        transforms.Compose([
+            crop,
+            transforms.Resize([224,224]),
+            transforms.ToTensor(),
+            normalize,
+        ]))
+
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+        val_sampler = DistributedSimpleSampler(val_dataset)
+        print('num_samples : %s' % val_sampler.num_samples)
+
     else:
         train_sampler = None
-
+        val_sampler = None
     # shuffle to False not to have the data reshuffled at every epoch
     # wrap multiprocessing
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
+        num_workers=args.workers, pin_memory=True, sampler=val_sampler)
+
+    '''
     val_loader = torch.utils.data.DataLoader(
         DatasetDataframe(ROOT_DIR, dfval, transforms.Compose([
             crop,
@@ -281,6 +354,7 @@ def main_worker(gpu, ngpus_per_node, args):
         ])),
         batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True)
+    '''
 
     if args.evaluate:
         validate(val_loader, model, criterion, args)
@@ -379,9 +453,12 @@ def validate(val_loader, model, criterion, args):
     confusion_matrix = torch.zeros(args.num_classes, args.num_classes)
     predictions = []
     probabilities = []
-
+    targets = []
     # switch to evaluate mode
     model.eval()
+
+    indices = list(val_loader.sampler)
+
 
     with torch.no_grad():
         end = time.time()
@@ -398,13 +475,13 @@ def validate(val_loader, model, criterion, args):
             acc1, acc5 = accuracy(output, target, topk=(1, 5))
 
             # confusion matrix
-            confusion = calculate_cm(output, target, args.num_classes)
+            # confusion = calculate_cm_torch(output, target, args.num_classes)
 
             # accuracy
             losses.update(loss.item(), input.size(0))
             top1.update(acc1[0], input.size(0))
             top5.update(acc5[0], input.size(0))
-            confusion_matrix += confusion
+            # confusion_matrix += confusion
 
             # save ppredictions
             _, preds = torch.max(output, 1)
@@ -415,25 +492,8 @@ def validate(val_loader, model, criterion, args):
             norm_output = softmax(output)
             probabilities.extend(norm_output.data.cpu().tolist())
 
-            # Set up plot
-            fig = plt.figure(figsize=(20,20))
-            ax = fig.add_subplot(111)
-            im = ax.matshow(confusion_matrix.numpy())
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="2%", pad=0.05)
-            plt.colorbar(im, cax=cax)
 
-            # Set up axes
-            ax.set_xticklabels([''] + args.all_categories, rotation=90)
-            ax.set_yticklabels([''] + args.all_categories)
-
-            # Force label at every tick
-            ax.xaxis.set_major_locator(MultipleLocator(1))
-            ax.yaxis.set_major_locator(MultipleLocator(1))
-
-            filename = os.path.join(args.data, 'confusion.jpg')
-            fig.savefig(filename)
-            plt.close(fig)
+            targets.extend(target.data.cpu().tolist())
 
             # measure elapsed time
             batch_time.update(time.time() - end)
@@ -448,17 +508,25 @@ def validate(val_loader, model, criterion, args):
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
 
+
+
         # Save predictions
-        filename = os.path.join(args.data, 'predictions.csv')
-        pd.DataFrame({'predictions': predictions}).to_csv(filename, index=False)
+        pd.DataFrame(predictions).to_csv(os.path.join(args.data, 'predictions_%s.csv' % args.gpu), header=False, index=False)
 
         # Save probabilities
-        filename = os.path.join(args.data, 'probabilities.csv')
-        pd.DataFrame(probabilities).to_csv(filename, index=False)
+        pd.DataFrame(probabilities).to_csv(os.path.join(args.data, 'probabilities_%s.csv' % args.gpu), header=False, index=False)
 
+        # Save target
+        pd.DataFrame(targets).to_csv(os.path.join(args.data, 'targets_%s.csv' % args.gpu), header=False, index=False)
+
+        # Save indices
+        pd.DataFrame(indices).to_csv(os.path.join(args.data, 'indices_%s.csv' % args.gpu), header=False, index=False)
+
+        """
         # Normalize by dividing every row by its sum
         for i in range(args.num_classes):
             confusion_matrix[i] = confusion_matrix[i] / confusion_matrix[i].sum()
+
 
         # Set up plot
         fig = plt.figure(figsize=(20,20))
@@ -476,9 +544,10 @@ def validate(val_loader, model, criterion, args):
         ax.xaxis.set_major_locator(MultipleLocator(1))
         ax.yaxis.set_major_locator(MultipleLocator(1))
 
-        filename = os.path.join(args.data, 'confusion.jpg')
+        filename = os.path.join(args.data, 'confusion_%s.jpg'%args.gpu)
         fig.savefig(filename)
         plt.close(fig)
+        """
 
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
               .format(top1=top1, top5=top5))
@@ -487,7 +556,7 @@ def validate(val_loader, model, criterion, args):
 
 
 def save_checkpoint(state, is_best, filename='/model/checkpoint.pth.tar'):
-    torch.save(state, filename)
+    torch.save(state, mode  )
     if is_best:
         shutil.copyfile(filename, '/model/model_best.pth.tar')
 
@@ -534,7 +603,7 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-def calculate_cm(output, target, num_classes):
+def calculate_cm_torch(output, target, num_classes):
     """Calculate confussion matrix"""
     with torch.no_grad():
         confusion = torch.zeros(num_classes, num_classes)
@@ -544,6 +613,14 @@ def calculate_cm(output, target, num_classes):
 
         return confusion
 
+def calculate_cm(output, target):
+    """Calculate confussion matrix"""
+    confusion = np.zeros((output.shape[1], output.shape[1]))
+    preds = np.argmax(output, axis=1)
+    for t, p in zip(target.flatten(), preds.flatten()):
+            confusion[int(t), int(p)] += 1
+
+    return confusion
 
 def create_simlink():
 
@@ -564,7 +641,7 @@ def create_simlink():
     columns = ['path','img1','join_marque_modele']
     limit = 1e7
     sampling = -0.1
-    #DSS_HOST = VERTICA_HOST+":10000"
+    #DSS_HOST = VERTICA_HOST+":0"
     df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name,columns,conditions,limit,sampling)
 
     df = df[df.img1.notnull()]
@@ -602,7 +679,8 @@ if __name__ == '__main__':
 
 """
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --epochs 10 --rank 0 /model/test2
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 --evaluate --resume /model/resnet18-100/model_best.pth.tar  /model/resnet18-100
+
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 -r  /model/resnet18-100-2
 
 """
