@@ -63,10 +63,10 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
             value_name='img_name').sort_values('path')
 
     # filter only .jpg extension
-    img_df = img_df[img_df.img_name.str.contains('.jpg')]
 
     img_df = img_df[(img_df.img_name != "") & (img_df.path != "")]
     img_df.dropna(subset=['path','img_name'],inplace=True,how='any')
+    img_df = img_df[img_df.img_name.str.contains('.jpg')]
 
     img_df.reset_index(inplace=True)
 
@@ -322,7 +322,7 @@ def main():
     gpus = 4
     workers_per_gpu = 2
     nrows = 100
-    dataset = VIT_files_trunc
+    dataset = 'VIT_files_trunc'
     checkpoint = '/model/%s.pth'%modele['checkpoint']
 
     cfg = load_config(modele)
