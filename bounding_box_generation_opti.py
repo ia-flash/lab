@@ -50,15 +50,20 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
     print(img_MIF_df.head())
     print('%s rows have been retrieved'%img_MIF_df.shape[0])
 
-    img_MIF_df = img_MIF_df.assign(
-    img1_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img1']),
-    img2_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img2']),
-                    )
-    img_df = pd.melt(img_MIF_df,
-        id_vars='path',
-        value_vars=['img1','img2'], # list of days of the week
-        var_name='img_num',
-        value_name='img_name').sort_values('path')
+    if 'img1' in img_MIF_df.columns and 'img2' in img_MIF_df.columns:
+        img_MIF_df = img_MIF_df.assign(
+        img1_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img1']),
+        img2_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img2']),
+                        )
+
+        img_df = pd.melt(img_MIF_df,
+            id_vars='path',
+            value_vars=['img1','img2'], # list of days of the week
+            var_name='img_num',
+            value_name='img_name').sort_values('path')
+
+    # filter only .jpg extension
+    img_df = img_df[img_df.img_name.str.contains('.jpg')]
 
     img_df = img_df[(img_df.img_name != "") & (img_df.path != "")]
     img_df.dropna(subset=['path','img_name'],inplace=True,how='any')
@@ -316,11 +321,13 @@ def main():
     # Build dataset
     gpus = 4
     workers_per_gpu = 2
+    nrows = 100
+    dataset = VIT_files_trunc
     checkpoint = '/model/%s.pth'%modele['checkpoint']
 
     cfg = load_config(modele)
 
-    img_df = load_data(nrows=100)
+    img_df = load_data(dataset, nrows=nrows)
 
 
     col_seg = ['img_name','path','x1','y1','x2','y2',
