@@ -28,6 +28,7 @@ import torchvision.models as models
 
 from custom_generator import DatasetDataframe, Crop
 from simple_sampler import DistributedSimpleSampler
+from utils import gather_evaluation, calculate_cm
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -88,19 +89,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 
 best_acc1 = 0
 
-def gather_evaluation(filename, gpu):
-    base_filename, file_extension = os.path.splitext(filename)
-    df = pd.DataFrame()
-    print(gpu)
-    for i in range(gpu) :
-        filename_i = base_filename + '_%s'%i + file_extension
-        print('read %s'%filename_i)
-        df_i = pd.read_csv(filename_i,header=None)
-        df = pd.concat([df, df_i], ignore_index=True,axis=0)
-        os.remove(filename_i)
 
-    df.to_csv(filename,  header=False, index=False)
-    return df
 
 
 def main():
@@ -556,7 +545,7 @@ def validate(val_loader, model, criterion, args):
 
 
 def save_checkpoint(state, is_best, filename='/model/checkpoint.pth.tar'):
-    torch.save(state, mode  )
+    torch.save(state, filename)
     if is_best:
         shutil.copyfile(filename, '/model/model_best.pth.tar')
 
@@ -613,14 +602,6 @@ def calculate_cm_torch(output, target, num_classes):
 
         return confusion
 
-def calculate_cm(output, target):
-    """Calculate confussion matrix"""
-    confusion = np.zeros((output.shape[1], output.shape[1]))
-    preds = np.argmax(output, axis=1)
-    for t, p in zip(target.flatten(), preds.flatten()):
-            confusion[int(t), int(p)] += 1
-
-    return confusion
 
 def create_simlink():
 
@@ -682,5 +663,5 @@ python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained -
 
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 -r  /model/resnet18-100-2
-
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /model/resnet18-101
 """
