@@ -28,13 +28,15 @@ def image(filename):
     text = request.args.get('text', None)
 
     try:
-        im = cv2.imread(filename)
+        print("filename is : " + filename)
+        im = cv2.imread(os.path.join('/',filename))
         if x1 and x2 and y1 and y2:
             cv2.rectangle(im, (int(float(x1)), int(float(y1))), (int(float(x2)),int(float(y2))), (0,0,255), 2)
         if text:
             cv2.putText(im, text, (int(float(x1)), int(float(y2)) - 5), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
         if w and h:
             w, h = int(w), int(h)
+            print(im.shape)
             im = cv2.resize(im, (w, h))
         _, img_encoded = cv2.imencode('.jpg', im)
         return Response(img_encoded.tobytes(), mimetype='image/jpeg')
