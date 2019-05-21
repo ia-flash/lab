@@ -61,6 +61,9 @@ parser.add_argument('--radar', metavar='RADAR TYPE',type=str, nargs='+',
 parser.add_argument('--columns', metavar='COLUMNS',type=str, nargs='+',
                     help='Columns to retrieve',default=columns)
 
+parser.add_argument('--where', metavar='WHERE',type=str,
+                    help='WHERE CLAUSE',default=None)
+
 parser.add_argument('--sampling', metavar='SAMPLE',type=float,default=sampling,
                     help='Sampling rate when extracting')
 
@@ -69,6 +72,9 @@ parser.add_argument('-l', '--limit', metavar='LIMIT',type=int, default=limit,
 
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
+
+parser.add_argument( '--shuffle', dest='shuffle',action='store_true',
+                    help='shuffle all rows after request the data')
 
 init_dict = dict(table=dataset_name,sampling=sampling,limit=limit,columns=columns)
 
@@ -118,6 +124,7 @@ def read_df(args):
         if type(args.columns) is str:
             args.columns = args.columns.split(",")
 
+
     if args.class_list:
         print(args.class_list)
         #class_list = pd.read_csv(os.path.join(args.dir, args.class_list))
@@ -158,8 +165,14 @@ def read_df(args):
         conditions += ' AND '
         conditions += 'TYPEEQUIP_Libelle IN (%s) ' %', '.join(["'%s'"%radar_type[col] for col in  args.radar])
 
-    conditions += ' AND '
-    conditions += "x1 IS NOT NULL "
+    if args.where :
+        if conditions != '':
+            conditions += ' AND '
+        conditions +=  '(' + args.where + ')'
+
+    if conditions != '':
+        conditions += ' AND '
+    conditions += "x1 IS NOT NULL AND path IS NOT NULL AND img_name IS NOT NULL "
 
     #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
     #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
@@ -167,6 +180,16 @@ def read_df(args):
         args.table,args.columns,conditions,args.limit,args.sampling)
 
     df = df[df.notnull()]
+
+    if args.shuffle : # shuffle but take care that img1 and img2 are bounded
+        print('Start shufffing data ...')
+        start = time.time()
+        groups = [df for _, df in df.groupby('path')]
+        random.shuffle(groups)
+        df = pd.concat(groups).reset_index(drop=True)
+        end = time.time()
+        print("Took %s"%(end-start))
+
     return df
 
 def create_mapping(args,df):
@@ -187,6 +210,7 @@ def create_mapping(args,df):
     with open(os.path.join(args.dir,'idx_to_class.json'), 'w') as outfile:
         json.dump(idx_to_class,outfile)
 
+    print("Number classes : %s"%str(i))
     return df
 
 def write_df(args,df):
@@ -195,11 +219,16 @@ def write_df(args,df):
     #df.rename(columns={'_rank':'target'},inplace=True)
     cols = ['img_path','target','x1','y1','x2','y2','score']
 
-    df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(args.dir,'train.csv'), index=False)
     if args.evaluate:
         df[cols].to_csv(os.path.join(args.dir,'val.csv'), index=False)
     else:
-        df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(args.dir,'val.csv'), index=False)
+        nb_rows = len(df)
+        df.loc[0:int(nb_rows*0.7),cols].to_csv(os.path.join(args.dir,'train.csv'), index=False)
+        df.loc[int(nb_rows*0.7):int(nb_rows*0.9),cols].to_csv(os.path.join(args.dir,'val.csv'), index=False)
+        df.loc[int(nb_rows*0.9):nb_rows,cols].to_csv(os.path.join(args.dir,'test.csv'), index=False)
+
+        #df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(args.dir,'val.csv'), index=False)
+        #df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(args.dir,'train.csv'), index=False)
 
     # create mapping
 
@@ -227,4 +256,5 @@ python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
 python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --class_list classes.csv --keep --sampling 0 --limit 0
 python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --nb_modeles 140
+
 """
