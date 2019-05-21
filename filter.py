@@ -40,6 +40,9 @@ parser.add_argument('--status', metavar='STATUS DOSSIER',type=int, nargs='+',
                     choices=range(60),
                     help='Filter DI_StatutDossier')
 
+parser.add_argument( '--score', metavar='SCORE',type=float,
+                    help='Filter by fuzzy match score')
+
 parser.add_argument( '--nb_modeles', metavar='NOMBRE MODELES',type=int,
                     help='Filter Nombre de Modele')
 
@@ -139,6 +142,13 @@ def read_df(args):
             args.table,['modele, COUNT(modele)'],group_req)
         df['modele'].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
         conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in df['modele'].tolist()]))
+
+    if args.score:
+        if type(args.score) is str:
+            args.score = args.score.split(",")
+        if conditions != '':
+            conditions += ' AND '
+        conditions += 'score > {} '.format(args.score)
 
     if args.modele :
         if type(args.modele) is str:
@@ -254,7 +264,9 @@ python filter.py --table CarteGrise_norm_melt_joined --status 4,6,13 -l 10 --dir
 python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
-python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --class_list classes.csv --keep --sampling 0 --limit 0
-python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test2 --nb_modeles 140
 
-"""
+python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/resnet18-101 --class_list classes.csv --keep --sampling 0 --limit 0 --score 0.95
+python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test --nb_modeles 20 --score 0.95 --sampling 0.001
+
+# resnet18-102
+python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-102 --nb_modeles 150 --score 0.95 --sampling 0.001 --where (TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')
