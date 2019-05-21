@@ -137,6 +137,9 @@ def main_worker(gpu, ngpus_per_node, args):
     dftrain = pd.read_csv(traindir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
 
+    dftrain = dftrain[dftrain['x1'].notnull()]
+    dfval = dfval[dfval['x1'].notnull()]
+
     dftrain['target'] = dftrain['target'].astype(int)
     dfval['target'] = dfval['target'].astype(int)
 
@@ -599,7 +602,7 @@ if __name__ == '__main__':
 
 """
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --epochs 10 --rank 0 /model/test2
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 --evaluate --resume /model/resnet18-100/model_best.pth.tar  /model/resnet18-100
 
 """
