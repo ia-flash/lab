@@ -55,16 +55,26 @@ def images_csv(csvpath):
     images = []
     dirname = os.path.dirname(csvpath)
     filename = os.path.join('/', csvpath)
-    df_val = pd.read_csv(filename)
-    filename = os.path.join('/', dirname, "predictions.csv")
-    df_pred = pd.read_csv(filename)
-    df = pd.concat([df_val, df_pred], axis=1)
+    df_val = pd.read_csv(filename).sample(100)
+    df_val = df_val[df_val['x1'].notnull()]
     classes_ids = read_class_reference(dirname)
-    df = df.assign(
-            target_class=df['target'].apply(lambda x: classes_ids[str(int(x))]),
-            pred_class=df['predictions'].apply(lambda x: classes_ids[str(int(x))])
-    )
-    df = df[df['target'] != df['predictions']]
+    if os.path.isfile(os.path.join('/', dirname, "predictions.csv")):
+        filename = os.path.join('/', dirname, "predictions.csv")
+        df_pred = pd.read_csv(filename)
+        df = pd.concat([df_val, df_pred], axis=1)
+        df = df.assign(
+                target_class=df['target'].astype(str).replace(classes_ids),
+                pred_class=df['predictions'].astype(str).replace(classes_ids),
+                text=lambda x: (
+                    'Label : ' + x['target_class'].astype(str) + ' -  Pred: ' +
+                    x['pred_class'].astype(str)+ ' Score: ' + 
+                    x['score'].astype(str)
+                    )
+        )
+    else:
+        df = df_val
+        df['text'] = df['target'].astype(int).astype(str).replace(classes_ids)
+    #df = df[df['target'] != df['predictions']]
     for i, row in df.iterrows():
         filename = os.path.join(ROOT_DIR,row['img_path'])
         im = Image.open(filename)
@@ -73,8 +83,6 @@ def images_csv(csvpath):
         width = aspect * HEIGHT
         height = HEIGHT
 
-        text = "Label:{} - Pred: {} Score: {:.3f}".format(row['target_class'], 
-                row['pred_class'], row['score'])
         images.append({
             'width': int(width),
             'height': int(height),
@@ -83,7 +91,7 @@ def images_csv(csvpath):
             'y1': int(row["y1"]),
             'x2': int(row["x2"]),
             'y2': int(row["y2"]),
-            'text': text,
+            'text': row['text'],
             })
 
     return render_template("preview.html", **{
