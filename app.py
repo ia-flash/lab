@@ -55,26 +55,12 @@ def images_csv(csvpath):
     images = []
     dirname = os.path.dirname(csvpath)
     filename = os.path.join('/', csvpath)
-    df_val = pd.read_csv(filename).sample(100)
+    df_val = pd.read_csv(filename).sample(10000)
     df_val = df_val[df_val['x1'].notnull()]
     classes_ids = read_class_reference(dirname)
-    if os.path.isfile(os.path.join('/', dirname, "predictions.csv")):
-        filename = os.path.join('/', dirname, "predictions.csv")
-        df_pred = pd.read_csv(filename)
-        df = pd.concat([df_val, df_pred], axis=1)
-        df = df.assign(
-                target_class=df['target'].astype(str).replace(classes_ids),
-                pred_class=df['predictions'].astype(str).replace(classes_ids),
-                text=lambda x: (
-                    'Label : ' + x['target_class'].astype(str) + ' -  Pred: ' +
-                    x['pred_class'].astype(str)+ ' Score: ' + 
-                    x['score'].astype(str)
-                    )
-        )
-    else:
-        df = df_val
-        df['text'] = df['target'].astype(int).astype(str).replace(classes_ids)
-    #df = df[df['target'] != df['predictions']]
+    df = df_val
+    df['text'] = 'Label: ' + df['target'].astype(int).astype(str).replace(classes_ids) + '- Pred: ' +  df['pred_class'].astype(int).astype(str).replace(classes_ids)  + ' Score: ' + df['proba'].round(3).astype(str)
+    df = df[df['target'] != df['pred_class']]
     for i, row in df.iterrows():
         filename = os.path.join(ROOT_DIR,row['img_path'])
         im = Image.open(filename)
@@ -112,8 +98,10 @@ def images_explore():
         width = aspect * HEIGHT
         height = HEIGHT
 
-        if ('marque' in row) and ('modele' in row):
-            text = "{}, {}".format(row['marque'], row['modele'])
+        #if ('marque' in row) and ('modele' in row):
+        #    text = "{}, {}".format(row['marque'], row['modele'])
+        if ('CG_MarqueVehicule' in row) and ('CG_ModeleVehicule' in row):
+            text = "{}, {}".format(row['CG_MarqueVehicule'], row['CG_ModeleVehicule'])
         else:
             text = 'Pas de prediction'
 
