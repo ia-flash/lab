@@ -12,8 +12,8 @@ from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT,PROJECT_KEY_VIT,
 from dss.api import read_dataframe
 
 
-dataset_name = 'bbox_marque_modele_class'
-columns = ['path','img_name','x1','y1','x2','y2','score','modele','marque']
+dataset_name = 'bbox_marque_class_class'
+columns = ['path','img_name','x1','y1','x2','y2','score','modele','marque','class']
 limit = 1e5
 sampling = 0.1
 radar_type = {
@@ -43,19 +43,19 @@ parser.add_argument('--status', metavar='STATUS DOSSIER',type=int, nargs='+',
 parser.add_argument( '--score', metavar='SCORE',type=float,
                     help='Filter by fuzzy match score')
 
-parser.add_argument( '--nb_modeles', metavar='NOMBRE MODELES',type=int,
-                    help='Filter Nombre de Modele')
+parser.add_argument( '--nb_classes', metavar='NOMBRE CLASSES',type=int,
+                    help='Filter Nombre de classes')
 
 parser.add_argument( '--class_list', metavar='LIST CLASSES',type=str,
                     help='Classes to use')
 
 
-parser.add_argument( '--modele', metavar='MODELE',type=str, nargs='+',
-                    help='Filter Modele')
+parser.add_argument( '--modele', metavar='modele',type=str, nargs='+',
+                    help='Filter modele')
 
 parser.add_argument('--sens', metavar='SENS DETECTION',type=str, nargs='+',
                     choices=['ELOI','RAPP','BI-DIRECTIONNEL'],
-                    help='Filter Modele')
+                    help='Filter modele')
 
 parser.add_argument('--radar', metavar='RADAR TYPE',type=str, nargs='+',
                     choices=radar_type.keys(),
@@ -88,15 +88,20 @@ def main():
     args = parser.parse_args()
 
     if (not args.keep) or (not os.path.exists(args.dir)):
-        #print('=> drop and recreate')
-        shutil.rmtree(args.dir, ignore_errors=True)
-
-        os.makedirs(args.dir, exist_ok=True)
+        print("Drop and recreate everything in %s ?" %args.dir )
+        print('[Y/n]')
+        choice = input().lower()
+        if choice == "n" :
+            print('=> Escape')
+            return (args.dir)
+        else :
+            shutil.rmtree(args.dir, ignore_errors=True)
+            os.makedirs(args.dir, exist_ok=True)
 
     df = read_df(args)
     print('Retrieve %s rows'%df.shape[0])
-    df = create_mapping(args,df)
-    write_df(args,df)
+    df = create_mapping(args, df)
+    write_df(args, df)
 
     return(args.dir)
 
@@ -132,19 +137,11 @@ def read_df(args):
 
     if args.class_list:
         print(args.class_list)
-        #class_list = pd.read_csv(os.path.join(args.dir, args.class_list))
-        class_list = pd.read_csv(os.path.join('./', args.class_list), header=None)
-        conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
+        #class_list = pd.read_csv(os.path.join(args.dir, args.modele_list))
+        class_list = pd.read_csv(args.class_list, header=None)
+        conditions += 'class IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
 
-    if args.nb_modeles:
-        if type(args.nb_modeles) is str:
-            args.nb_modeles = args.nb_modeles.split(",")
-        group_req = "modele ILIKE modele GROUP BY modele ORDER BY COUNT(modele) DESC LIMIT {};".format(args.nb_modeles)
-        df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,
-            args.table,['modele, COUNT(modele)'],group_req)
-        df['modele'].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
-        conditions += 'modele IN ({}) '.format(', '.join(["'{}'".format(i) for i in df['modele'].tolist()]))
-
+    print('ok')
     if args.score:
         if type(args.score) is str:
             args.score = args.score.split(",")
@@ -155,7 +152,7 @@ def read_df(args):
     if args.modele :
         if type(args.modele) is str:
             args.modele = args.modele.split(",")
-        conditions += 'modele IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
+        conditions += 'class IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
 
     if args.status :
         if type(args.status) is str:
@@ -187,6 +184,16 @@ def read_df(args):
         conditions += ' AND '
     conditions += "path IS NOT NULL AND %s IS NOT NULL " %args.col_img
 
+    if args.nb_classes:
+        if type(args.nb_classes) is str:
+            args.nb_classes = args.nb_classes.split(",")
+        group_req = conditions + ' AND ' + "class ILIKE class GROUP BY class  ORDER BY COUNT(class) DESC LIMIT {};".format(args.nb_classes)
+        df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,
+            args.table,['class, COUNT(class)'],group_req)
+        df['class'].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
+        conditions += ' AND '
+        conditions += 'class IN ({}) '.format(', '.join(["'{}'".format(i) for i in df['class'].tolist()]))
+
     #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
     #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
     df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,
@@ -207,18 +214,18 @@ def read_df(args):
 
 def create_mapping(args,df):
     #df_class = df.groupby('_rank',sort=True)
-    df_class = df.groupby('modele',sort=True)
+    df_class = df.groupby('class')
 
     i = 0
     idx_to_class = {}
 
     for _rank, tmp in df_class:
-        assert tmp['modele'].unique().shape[0] == 1
-        class_name = tmp['modele'].unique()[0]
+        assert tmp['class'].unique().shape[0] == 1
+        class_name = tmp['class'].unique()[0]
         df.loc[tmp.index,'target'] = int(i)
         idx_to_class.update({i:class_name})
         i+=1
-        print('Count %s images for the modele: %s'%(len(tmp.index),class_name))
+        print('Count %s images for the class: %s'%(len(tmp.index),class_name))
 
     with open(os.path.join(args.dir,'idx_to_class.json'), 'w') as outfile:
         json.dump(idx_to_class,outfile)
@@ -264,14 +271,13 @@ if __name__ == '__main__':
 
 """
 python filter.py --table CarteGrise_norm_melt_joined --status 4,6,13 -l 10 --dir /model/test/
-python filter.py --sampling 0.1  --modele CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
+python filter.py --sampling 0.1  --class CLIO 206 --radar ETF --sens ELOI RAPP -l 10 /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/
 python filter.py --status 0  --sens ELOI RAPP -l 10 --dir /model/test/ --evaluate
 
 python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/resnet18-101 --class_list classes.csv --keep --sampling 0 --limit 0 --score 0.95
-python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test --nb_modeles 20 --score 0.95 --sampling 0.001
+python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/test --nb_classes 20 --score 0.95 --sampling 0.001
 
-# resnet18-102
-python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-102 --nb_modeles 150 --score 0.95 --sampling 0.001 --where (TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')
-
+# resnet18-150
+python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-150 --nb_classes 160 --score 0.95  --sampling 0 --limit 0   --where "(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')"
 """

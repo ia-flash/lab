@@ -28,7 +28,6 @@ import torchvision.models as models
 
 from custom_generator import DatasetDataframe, Crop
 from simple_sampler import DistributedSimpleSampler
-from utils import gather_evaluation, calculate_cm
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -89,7 +88,19 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 
 best_acc1 = 0
 
+def gather_evaluation(filename, gpu):
+    base_filename, file_extension = os.path.splitext(filename)
+    df = pd.DataFrame()
+    print(gpu)
+    for i in range(gpu) :
+        filename_i = base_filename + '_%s'%i + file_extension
+        print('read %s'%filename_i)
+        df_i = pd.read_csv(filename_i,header=None)
+        df = pd.concat([df, df_i], ignore_index=True,axis=0)
+        os.remove(filename_i)
 
+    df.to_csv(filename,  header=False, index=False)
+    return df
 
 
 def main():
@@ -115,6 +126,8 @@ def main():
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
     ngpus_per_node = torch.cuda.device_count()
+    print("SEE %s GPUs"%ngpus_per_node)
+
     if args.multiprocessing_distributed:
         # Since we have ngpus_per_node processes per node, the total world_size
         # needs to be adjusted accordingly
@@ -265,8 +278,13 @@ def main_worker(gpu, ngpus_per_node, args):
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
+    # by default if evaluate and no resume file, take best_model.pth.tar in args.data
+    if (not args.resume) and args.evaluate :
+        print('Take model_best.pth.tar in : %s'%args.data)
+        args.resume = os.path.join(args.data, "model_best.pth.tar")
+
     # optionally resume from a checkpoint
-    if args.resume:
+    if args.resume :
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
@@ -375,7 +393,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
                 'optimizer' : optimizer.state_dict(),
-            }, is_best)
+            },  is_best, basename=args.data)
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
@@ -544,10 +562,10 @@ def validate(val_loader, model, criterion, args):
     return top1.avg
 
 
-def save_checkpoint(state, is_best, filename='/model/checkpoint.pth.tar'):
-    torch.save(state, filename)
+def save_checkpoint(state, is_best, basename='/model', filename='checkpoint.pth.tar'):
+    torch.save(state, os.path.join(basename,filename))
     if is_best:
-        shutil.copyfile(filename, '/model/model_best.pth.tar')
+        shutil.copyfile(os.path.join(basename,filename), os.path.join(basename,'model_best.pth.tar') )
 
 
 class AverageMeter(object):
@@ -602,6 +620,14 @@ def calculate_cm_torch(output, target, num_classes):
 
         return confusion
 
+def calculate_cm(output, target):
+    """Calculate confussion matrix"""
+    confusion = np.zeros((output.shape[1], output.shape[1]))
+    preds = np.argmax(output, axis=1)
+    for t, p in zip(target.flatten(), preds.flatten()):
+            confusion[int(t), int(p)] += 1
+
+    return confusion
 
 def create_simlink():
 
@@ -662,6 +688,8 @@ if __name__ == '__main__':
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
 
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 -r  /model/resnet18-100-2
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /model/resnet18-101
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0  /model/resnet18-100-2
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --resume /model/model_best.pth.tar --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
+
 """

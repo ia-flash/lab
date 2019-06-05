@@ -54,15 +54,32 @@ def images():
 
 @app.route('/csv/<path:csvpath>')
 def images_csv(csvpath):
+    query = request.args.get('query', None)
+    limit = request.args.get('limit', None)
+
     images = []
     dirname = os.path.dirname(csvpath)
     filename = os.path.join('/', csvpath)
-    df_val = pd.read_csv(filename).sample(10000)
+    df_val = pd.read_csv(filename)#.sample(10000)
     df_val = df_val[df_val['x1'].notnull()]
+
     classes_ids = read_class_reference(dirname)
     df = df_val
-    df['text'] = 'Label: ' + df['target'].astype(int).astype(str).replace(classes_ids) + '- Pred: ' +  df['pred_class'].astype(int).astype(str).replace(classes_ids)  + ' Score: ' + df['proba'].round(3).astype(str)
-    df = df[df['target'] != df['pred_class']]
+    df['class_name'] = df['target'].astype(int).astype(str).replace(classes_ids)
+    df['text'] = 'Label: ' + df['class_name']
+    if'pred_class' in df.columns :
+        df['text'] += '- Pred: ' +  df['pred_class'].astype(int).astype(str).replace(classes_ids)
+    if 'proba' in df.columns :
+        df['text'] +=  ' Score: ' + df['proba'].round(3).astype(str)
+    #df = df[df['target'] != df['pred_class']]
+    if query:
+        print(query)
+        df = df.query(query)
+
+    if limit :
+        df = df.sample(int(limit))
+
+    print(df.shape)
     for i, row in df.iterrows():
         filename = os.path.join(ROOT_DIR,row['img_path'])
         im = Image.open(filename)
