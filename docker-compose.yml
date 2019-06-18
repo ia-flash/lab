@@ -25,6 +25,7 @@ services:
      - isolated_nw
     volumes:
      - /data:/data
+     - /vgdata:/vgdata
      - /data:/workspace/iaflash/data
      - /home/dss:/dss
      - /home/model:/model
