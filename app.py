@@ -92,8 +92,9 @@ def images_explore():
     images = []
     df = filter(**request.args)
     print(df.head())
+    col_img = request.args.get('col_img', 'img_name')
     for i, row in df.iterrows():
-        filename = os.path.join(ROOT_DIR,row['path'],row['img_name'])
+        filename = os.path.join(ROOT_DIR,row['path'],row[col_img])
         im = Image.open(filename)
         w, h = im.size
         aspect = 1.0*w/h
@@ -104,6 +105,9 @@ def images_explore():
         #    text = "{}, {}".format(row['marque'], row['modele'])
         if ('CG_MarqueVehicule' in row) and ('CG_ModeleVehicule' in row):
             text = "{}, {}".format(row['CG_MarqueVehicule'], row['CG_ModeleVehicule'])
+            row = row.append(pd.Series([30,30,30,30], index=['x1','y1','x2','y2']))
+        elif ('class' in row) and ('score' in row):
+            text = "{}, {}".format(row['class'], row['score'])
         else:
             text = 'Pas de prediction'
 
@@ -111,10 +115,10 @@ def images_explore():
             'width': int(width),
             'height': int(height),
             'src': filename,
-            'x1': row["x1"],
-            'y1': row["y1"],
-            'x2': row["x2"],
-            'y2': row["y2"],
+            'x1': row.get("x1",0),
+            'y1': row.get("y1",0),
+            'x2': row.get("x2",0),
+            'y2': row.get("y2",0),
             'text': text
         })
 

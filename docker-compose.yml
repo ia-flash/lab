@@ -9,7 +9,7 @@ services:
         - https_proxy=${https_proxy}
     runtime: nvidia
     ipc: host
-    cpus: 32
+    cpus: 16
     env_file:
       - docker/env.list
     environment:

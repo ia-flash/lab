@@ -12,7 +12,6 @@ from mmcv.parallel import scatter, collate, MMDataParallel
 
 from mmdet.models import build_detector, detectors
 
-import dataikuapi as dka
 import pandas as pd
 import cv2
 import os,time
@@ -39,11 +38,10 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
     # cached the dataset as csv
     dataset_path = os.path.join(DSS_DIR,'{}.csv'.format(dataset_name))
     if not os.path.isfile(dataset_path):
-
         img_MIF_df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name, columns=['path','img1','img2'])
         img_MIF_df.to_csv(dataset_path)
     else:
-        print('Read cached csv')
+        print('Read cached csv : %s'%dataset_path)
         img_MIF_df = pd.read_csv(dataset_path, nrows=nrows)
 
 
@@ -258,12 +256,13 @@ def save_result(result,
         class_to_keep=class_to_keep,
         score_thr=score_thr)
 
-modele = dict(conf="retinanet_r50_fpn_1x",
-              checkpoint="retinanet_r50_fpn_1x_20181125-3d3c2142")
+
 modele = dict(conf="retinanet_x101_64x4d_fpn_1x",
           checkpoint="retinanet_x101_64x4d_fpn_1x_20181218-2f6f778b")
 
 
+modele = dict(conf="retinanet_r50_fpn_1x",
+              checkpoint="retinanet_r50_fpn_1x_20181125-3d3c2142")
 
 def _data_func(data, device_id):
     data = scatter(collate([data], samples_per_gpu=1), [device_id])[0]
@@ -320,22 +319,35 @@ def chunker(seq, size):
 def main():
     # Build dataset
     gpus = 4
-    workers_per_gpu = 2
-    nrows = 100
-    dataset = 'VIT_files_trunc'
+    workers_per_gpu = 4
+    nrows = 1e8
+    chunksize = int(1e3)
+
+    dataset = 'img3_prepared'
+    log_dataset = 'log3_%s'%modele['conf']
+    box_dataset = 'box3_%s'%modele['conf']
+
     checkpoint = '/model/%s.pth'%modele['checkpoint']
 
     cfg = load_config(modele)
 
     img_df = load_data(dataset, nrows=nrows)
+    print(img_df.shape)
 
+    # load dataset on db and filter images never processed
+    img_db = read_dataframe(API_KEY_VIT, VERTICA_HOST, PROJECT_KEY_VIT, log_dataset, columns=['path','img_name'])
+    img_db = img_db.eval('path + img_name').unique()
+    print('there is %s images seen'%len(img_db))
+    img_df = img_df.loc[~img_df.eval('path + img_name').isin(img_db),:]
+
+    print("Need to process : %s images"%img_df.shape[0])
 
     col_seg = ['img_name','path','x1','y1','x2','y2',
                                     'class','score']
 
 
 
-    for chunk_df in chunker(img_df, 10):
+    for chunk_df in chunker(img_df, chunksize):
         car_dataset = CustomDataset(chunk_df, ROOT_DIR,**cfg.data.val)
         print('length of dataset :')
         print(len(car_dataset))
@@ -358,8 +370,6 @@ def main():
             img_seg = pd.concat([img_seg, to_save_df],
                     ignore_index=True,sort=False)
 
-
-
             log_seg = log_seg.append(dict(img_name=row['img_name'],
                                  path=row['path'],
                                  traceback=traceback),
@@ -367,8 +377,8 @@ def main():
 
         img_seg['score'] = img_seg['score'].round(decimals=2)
         print('%s images processed'%log_seg.shape[0])
-        write_dataframe(VERTICA_HOST,PROJECT_KEY_VIT,'log_%s'%modele['conf'],log_seg)
-        write_dataframe(VERTICA_HOST,PROJECT_KEY_VIT,'box_%s'%modele['conf'],img_seg[col_seg])
+        write_dataframe(VERTICA_HOST,PROJECT_KEY_VIT,log_dataset,log_seg)
+        write_dataframe(VERTICA_HOST,PROJECT_KEY_VIT,box_dataset,img_seg[col_seg])
 
 
 
