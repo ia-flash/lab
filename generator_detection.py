@@ -60,7 +60,9 @@ class CustomDataset(Dataset):
                 img_shape=img_shape,
                 pad_shape=pad_shape,
                 scale_factor=scale_factor,
-                flip=flip)
+                flip=flip,
+                img_name=row['img_name'],
+                path=row['path'])
 
 
             return _img, _img_meta

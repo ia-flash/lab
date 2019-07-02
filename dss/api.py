@@ -4,6 +4,7 @@ from io import StringIO
 
 import vertica_python
 #import vertica_db_client
+import dataikuapi as dka
 
 
 
@@ -71,8 +72,22 @@ def read_dataframe_dss(apiKey,dss_host,keyProject,dataset_name,columns=[],filter
 
     return df
 
+def write_shema(host, keyProject, dataset_name, schema):
+    """
+    Write shema from json
+    Similar to set_schema from dataikuapi
+    """
+    client = dka.dssclient.DSSClient(host, keyProject)
+    print(client.list_project_keys())
 
-def write_dataframe(host,keyProject,dataset_name,df):
+    project = client.get_project(keyProject)
+    dataset = project.get_dataset(dataset_name)
+    schema = dataset.get_schema()
+    print(schema)
+    #schema['columns'].append({'name' : 'new_column', 'type' : 'bigint'})
+    #dataset.set_schema(schema)
+
+def write_dataframe(host, keyProject, dataset_name, df):
     """
     Write pandas dataframe in vertica bd
     Args:
@@ -167,7 +182,18 @@ def test_write_dataframe():
     write_dataframe(keyProject,dataset_name,df)
     assert True
 
+
+def test_write_shema():
+
+    dataset_name = 'log2_retinanet_x101_64x4d_fpn_1x'
+    keyProject = 'VIT3'
+    host = "http://192.168.4.25:10000"
+    
+    write_shema(host, keyProject, dataset_name, {})
+
+
 if __name__ == "__main__":
     #test_write_dataframe()
 
-    test_read_dataframe()
+    #test_read_dataframe()
+    test_write_shema()

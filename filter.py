@@ -79,7 +79,9 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument( '--shuffle', dest='shuffle',action='store_true',
                     help='shuffle all rows after request the data')
 
-init_dict = dict(table=dataset_name,sampling=sampling,limit=limit,columns=columns)
+init_dict = dict(table=dataset_name,
+            sampling=sampling,limit=limit,
+            columns=columns,col_img='img_name')
 
 print('Read args')
 def main():
@@ -180,9 +182,10 @@ def read_df(args):
             conditions += ' AND '
         conditions +=  '(' + args.where + ')'
 
+
     if conditions != '':
         conditions += ' AND '
-    conditions += "x1 IS NOT NULL AND path IS NOT NULL AND img_name IS NOT NULL "
+    conditions += "path IS NOT NULL AND %s IS NOT NULL " %args.col_img
 
     #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
     #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])

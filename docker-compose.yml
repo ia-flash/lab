@@ -9,7 +9,7 @@ services:
         - https_proxy=${https_proxy}
     runtime: nvidia
     ipc: host
-    cpus: 32
+    cpus: 16
     env_file:
       - docker/env.list
     environment:
@@ -25,6 +25,7 @@ services:
      - isolated_nw
     volumes:
      - /data:/data
+     - /vgdata:/vgdata
      - /data:/workspace/iaflash/data
      - /home/dss:/dss
      - /home/model:/model
