@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title></title>
+    <meta charset="utf-8"/>
+    <style>
+    body {
+        margin: 0;
+        background-color: #333;
+    }
+    .image {
+        display: block;
+        margin: 2em auto;
+        background-color: #444;
+        box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    img {
+        display: block;
+    }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.10.2/jquery.min.js" charset="utf-8"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/unveil/1.3.0/jquery.unveil.min.js" charset="utf-8"></script>
+    <script>
+      $(document).ready(function() {
+        $('img').unveil();
+      });
+    </script>
+  </head>
+  <body>
+    <div class="columns is-multiline">
+      {% for image in images %}
+      <div class="column is-4-desktop is-12-mobile">
+        <a class="image" href="{{ image.src }}?x1={{image.x1}}&amp;y1={{image.y1}}&amp;x2={{image.x2}}&amp;y2={{image.y2}}&amp;marque={{image.marque}}&amp;modele={{image.modele}}&amp;text={{image.text}}">
+            <img id="myimg" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="{{ image.src }}?w={{ image.width }}&amp;h={{ image.height }}&amp;x1={{image.x1}}&amp;y1={{image.y1}}&amp;x2={{image.x2}}&amp;y2={{image.y2}}&amp;marque={{image.marque}}&amp;modele={{image.modele}}&amp;text={{image.text}}" width="{{ image.width }}" height="{{ image.height }}" />
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </body>
+</html>

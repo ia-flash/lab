@@ -3,3 +3,4 @@ conf.list
 __pycache__
 *.pyc
 *.ipynb
+*.egg-info
