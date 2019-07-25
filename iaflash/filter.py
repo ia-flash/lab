@@ -105,6 +105,7 @@ def main(args):
             print('=> Escape')
             return (args.dir)
         else :
+            print('Erasing...')
             shutil.rmtree(args.dir, ignore_errors=True)
             os.makedirs(args.dir, exist_ok=True)
 
@@ -159,7 +160,9 @@ def read_df(args):
     if args.modele :
         if type(args.modele) is str:
             args.modele = args.modele.split(",")
-        conditions += 'class IN (%s) ' %', '.join(["'%s'"%col for col in  args.modele])
+        if conditions != '':
+            conditions += ' AND '
+        conditions += 'class IN ({}) '.format(', '.join(["'%s'"%col for col in  args.modele]))
 
     if args.status :
         if type(args.status) is str:
@@ -258,7 +261,7 @@ def write_df(args,df):
         df.loc[0:int(nb_rows*0.7),cols].to_csv(os.path.join(args.dir,'train.csv'), index=False)
         df.loc[int(nb_rows*0.7):int(nb_rows*0.9),cols].to_csv(os.path.join(args.dir,'val.csv'), index=False)
         df.loc[int(nb_rows*0.9):nb_rows,cols].to_csv(os.path.join(args.dir,'test.csv'), index=False)
-
+        print('save csv to %s'%args.dir)
         #df[cols].tail(int(df.shape[0]*(1/3.))).to_csv(os.path.join(args.dir,'val.csv'), index=False)
         #df[cols].head(int(df.shape[0]*(2/3.))).to_csv(os.path.join(args.dir,'train.csv'), index=False)
 

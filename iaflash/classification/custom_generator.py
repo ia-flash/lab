@@ -2,12 +2,13 @@ import torch.utils.data as data
 from torchvision.transforms import transforms
 from torchvision.transforms.functional import to_tensor
 
-from PIL import Image
+from PIL import Image,  ImageStat
+import numpy as np
 
 import os
 import os.path
 import sys
-
+from random import randint
 
 IMG_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.ppm', '.bmp', '.pgm', '.tif', '.tiff', 'webp']
 
@@ -170,6 +171,81 @@ class Crop(object):
                       #coords[0]: coords[2]]
         return sample
 
+
+def cut_down(img, width, height):
+    """ find black frame at the bottom
+    Return y2
+    """
+    zeros = np.asarray(img)[:,
+            (int(width/4), int(1 * width/3), int(width/2),(int(2*width/3))),
+                :].sum(axis=1).sum(axis=1)
+
+    row0 = np.nonzero(zeros == 0)
+    if len(row0[0]) > 0:
+        minumun = np.min(row0) - 1
+        return width,  minumun
+    else:
+        return width, height
+
+
+class SquareCrop(object):
+    """Rescale the image in a sample to a given size, fitted in a square
+    """
+    def __call__(self, params):
+        sample, coords = params
+        width, height = sample.size
+        width, height = cut_down(sample, width, height)
+
+        x1, y1, x2, y2 = coords
+        x = x2 - x1
+        y = y2 - y1
+
+        padding = (0, 0)
+        pad_top, pad_bottom, pad_left, pad_right = 0, 0, 0, 0
+
+        if x > y :
+            y2_ = int((y1 + y2 + x)/2.)
+            y1_ = int((y1 + y2 - x)/2.)
+            x1_ = x1
+            x2_ = x2
+
+        elif x <= y:
+            x2_ = int((x1 + x2 + y)/2.)
+            x1_ = int((x1 + x2 - y)/2.)
+            y1_ = y1
+            y2_ = y2
+
+        if y1_ < 0 :
+            pad_top = - y1_
+            y1_ = 0
+        if y2_ > height:
+            pad_bottom = y2_ - height
+            y2_ = height
+        if x1_ < 0 :
+            pad_left = - x1_
+            x1_ = 0
+        if x2_ > width:
+            pad_right = x2_ - width
+            x2_ = width
+
+        padding = (int((pad_left + pad_right)/2.),  int((pad_bottom + pad_top)/2.))
+        coords = (x1_, y1_, x2_, y2_)
+
+        """
+        print(padding)
+        print(coords)
+        print((x2_ - x1_, y2_ - y1_))
+        """
+
+        sample = sample.crop(coords)
+
+        if sum(padding) > 0 :
+            # tuple(ImageStat.Stat(sample).mean)
+            pad = transforms.Pad(padding, fill=(100,100,100), padding_mode='constant') # padding_mode IN ['constant', 'edge', 'reflect', 'symmetric']
+            sample = pad(sample)
+
+        #sample.save("/model/test_square/img/" + str(randint(0,1e6)) + ".jpg")
+        return sample
 
 class DatasetFolder(data.Dataset):
     """A generic data loader where the samples are arranged in this way: ::

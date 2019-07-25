@@ -33,7 +33,7 @@ services:
      - /home/notebooks:/workspace
      - ./:/workspace/iaflash
      - /home/notebooks/.jupyter:/root/.jupyter
-    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=./"
+    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/workspace"
 
 
 

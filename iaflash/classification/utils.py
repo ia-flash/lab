@@ -27,7 +27,8 @@ def gather_evaluation(filename, gpu):
     print(gpu)
 
     if os.path.isfile(filename):
-        return pd.read_csv(filename, header=None)
+        os.remove(filename)
+        #return pd.read_csv(filename, header=None)
 
     for i in range(gpu) :
         filename_i = base_filename + '_%s'%i + file_extension
@@ -41,8 +42,10 @@ def gather_evaluation(filename, gpu):
 
 
 
-def build_result(model_path):
+def build_result(model_path, dataset):
     """
+    Inside model_path, join predictions with the validation  dataset to buid
+    results.csv
     """
     predictions = pd.read_csv(os.path.join(model_path, 'predictions.csv'),header=None)
     probabilities =  pd.read_csv(os.path.join(model_path, 'probabilities.csv'),header=None)
@@ -56,15 +59,15 @@ def build_result(model_path):
     results.drop_duplicates(subset = 'index', inplace=True) # remove added rows to complete batch
     results.set_index('index', inplace=True)
 
-    """
-    # TODO : Add dataset to Args
-    dataset = 'train.csv'
-    df = pd.read_csv(model_path+'/dataset',usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
+
+    #dataset = 'train.csv'
+    df = pd.read_csv(dataset, usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     results = pd.merge(results, df, how='inner', left_index=True, right_index=True)
-    """
+
     results.to_csv(model_path+'/results.csv', index=False)
 
     return results
+
 
 def refine()    :
     """ Refine train.csv without error of tagging
@@ -93,8 +96,8 @@ def dict2args(dict):
 
     return args
 
-    
-def load_model(args):
+
+def load_model(args, ngpus_per_node):
 
     model_names = sorted(name for name in models.__dict__
         if name.islower() and not name.startswith("__")
@@ -151,10 +154,6 @@ def load_model(args):
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
 
-    # by default if evaluate and no resume file, take best_model.pth.tar in args.data
-    if (not args.resume) and args.evaluate :
-        print('Take model_best.pth.tar in : %s'%args.data)
-        args.resume = os.path.join(args.data, "model_best.pth.tar")
 
     # optionally resume from a checkpoint
     if args.resume :

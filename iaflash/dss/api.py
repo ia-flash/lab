@@ -145,7 +145,7 @@ def test_write_shema():
     dataset_name = 'log2_retinanet_x101_64x4d_fpn_1x'
     keyProject = 'VIT3'
     host = "http://192.168.4.25:10000"
-    
+
     write_shema(host, keyProject, dataset_name, {})
 
 

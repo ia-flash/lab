@@ -27,9 +27,9 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 import iaflash
-from iaflash.classification.custom_generator import DatasetDataframe, Crop
+from iaflash.classification.custom_generator import DatasetDataframe, Crop, SquareCrop
 from iaflash.classification.simple_sampler import DistributedSimpleSampler
-from iaflash.classification.utils import gather_evaluation
+from iaflash.classification.utils import gather_evaluation, build_result
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -309,7 +309,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # Data Loading Code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-    crop = Crop()
+    crop = SquareCrop()
     # iterate images
     train_dataset = DatasetDataframe(
         args.root_dir,
@@ -661,9 +661,8 @@ if __name__ == '__main__':
 
 """
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
-
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /data/cars
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0  /model/resnet18-100-2
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
-python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --resume /model/model_best.pth.tar --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --resume /model/model_best.pth.tar --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102-refined-square
 """
