@@ -84,13 +84,13 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 parser.add_argument( '--shuffle', dest='shuffle',action='store_true',
                     help='shuffle all rows after request the data')
 
-parser.add_argument( '--api-key', action='store_true',
+parser.add_argument( '--api-key',
                     help='DSS api key', default=API_KEY_VIT)
 
-parser.add_argument( '--vertica-host', action='store_true',
+parser.add_argument( '--vertica-host',
                     help='VERTICA Host', default=VERTICA_HOST)
 
-parser.add_argument( '--project-key', action='store_true',
+parser.add_argument( '--project-key',
                     help='DSS project key', default=PROJECT_KEY_VIT)
 
 print('Read args')
@@ -116,21 +116,27 @@ def main(args):
 
     return(args.dir)
 
-def filter(**filt_dict):
-    # init Namespace object from parser init states
+
+def dict2args(dict):
 
     args = parser.parse_args()
 
     for key, val in vars(args).items():
         print(key, val)
-        if key not in filt_dict.keys():
+        if key not in dict.keys():
             atr = val
         else:
-            atr = filt_dict[key]
+            atr = dict[key]
 
         setattr(args, key, atr)
         print("set attribute %s for key %s "%(val, atr))
 
+    return args
+
+def filter(**filt_dict):
+    # init Namespace object from parser init states
+
+    dict2args(filt_dict)
     main(args)
     """
     return read_df(args)
@@ -296,4 +302,10 @@ python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /mode
 
 # resnet18-150
 python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-150 --nb_classes 160 --score 0.95  --sampling 0 --limit 0   --where "(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')"
+
+# resnet18-151
+python -m iaflash.filter --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /model/resnet18-151 --keep --class_list /home/model/resnet18-151/classes-2018.csv  --sampling 0 --limit 0 --score 0.95 --where "(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')"
+
+
+
 """

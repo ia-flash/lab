@@ -4,11 +4,10 @@ import torch
 import numpy as np
 import mmcv
 from mmcv.image import imread, imwrite
-from mmdet.core import get_classes
 
 import mmcv
 from mmcv.runner import load_checkpoint#, parallel_test
-from mmcv.parallel import scatter, collate, MMDataParallel
+from mmcv.parallel import scatter, collate, MMDataParallel, MMDistributedDataParallel
 
 from mmdet.models import build_detector, detectors
 
@@ -17,13 +16,14 @@ import cv2
 import os,time
 import os.path as osp
 
-from mmdet.apis import inference_detector
+from mmdet.apis import inference_detector, init_detector, init_dist
 from mmdet.datasets import build_dataloader
 
-from dss.api import read_dataframe, write_dataframe
-from environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
-from generator_detection import CustomDataset
-
+from iaflash.dss.api import read_dataframe, write_dataframe
+from iaflash.environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
+from iaflash.detection.generator_detection import CustomDataset
+from iaflash.detection.utils import load_data, chunker, save_result
+from mmdet.core import get_classes
 
 
 class_to_keep = ['person','bicycle', 'car',
@@ -34,49 +34,19 @@ class_to_keep = ['person','bicycle', 'car',
 col_seg = ['img_name','path','x1','y1','x2','y2',
                                     'class','score']
 
-def load_data(dataset_name = 'img_MIF',nrows=1e3):
-    # cached the dataset as csv
-    dataset_path = os.path.join(DSS_DIR,'{}.csv'.format(dataset_name))
-    if not os.path.isfile(dataset_path):
-        img_MIF_df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name, columns=['path','img1','img2'])
-        img_MIF_df.to_csv(dataset_path)
-    else:
-        print('Read cached csv : %s'%dataset_path)
-        img_MIF_df = pd.read_csv(dataset_path, nrows=nrows)
+modele = dict(conf="retinanet_r50_fpn_1x",
+              checkpoint="retinanet_r50_fpn_1x_20181125-7b0c2548")
 
-
-    print(img_MIF_df.head())
-    print('%s rows have been retrieved'%img_MIF_df.shape[0])
-
-    if 'img1' in img_MIF_df.columns and 'img2' in img_MIF_df.columns:
-        img_MIF_df = img_MIF_df.assign(
-        img1_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img1']),
-        img2_path=(ROOT_DIR + img_MIF_df['path'] + "/" + img_MIF_df['img2']),
-                        )
-
-        img_df = pd.melt(img_MIF_df,
-            id_vars='path',
-            value_vars=['img1','img2'], # list of days of the week
-            var_name='img_num',
-            value_name='img_name').sort_values('path')
-
-    # filter only .jpg extension
-
-    img_df = img_df[(img_df.img_name != "") & (img_df.path != "")]
-    img_df.dropna(subset=['path','img_name'],inplace=True,how='any')
-    img_df = img_df[img_df.img_name.str.contains('.jpg')]
-
-    img_df.reset_index(inplace=True)
-
-    return img_df
 
 
 
 def load_config(modele):
 
     ## PREPARE FROM MMCV-DET
-    cfg = mmcv.Config.fromfile('/usr/src/app/configs/%s.py'%modele['conf'])
+    cfg = mmcv.Config.fromfile('/workspace/mmdetection/configs/%s.py'%modele['conf'])
     cfg.model.pretrained = None
+    cfg.data.test.test_mode = True
+
     return cfg
 
 
@@ -110,11 +80,18 @@ def single_test(model, data_loader, show=False):
 
     return results, logs
 
+
 import multiprocessing
-def worker_func(model_cls, model_kwargs, checkpoint, dataset, data_func,
+def worker_func(model_cls, model_kwargs, dataset, data_func,
                 gpu_id, idx_queue, result_queue):
-    model = model_cls(**model_kwargs)
-    load_checkpoint(model, checkpoint, map_location='cpu')
+
+    config_file = os.path.join('/workspace/mmdetection/configs', f"{modele['conf']}.py")
+    checkpoint_file = os.path.join('/model', f"{modele['checkpoint']}.pth")
+
+    model = init_detector(config_file, checkpoint_file)
+
+    #model = model_cls(**model_kwargs)
+    #load_checkpoint(model, checkpoint_file, map_location='cpu')
     torch.cuda.set_device(gpu_id)
     model.cuda()
     model.eval()
@@ -133,7 +110,6 @@ def worker_func(model_cls, model_kwargs, checkpoint, dataset, data_func,
 
 def parallel_test(model_cls,
                   model_kwargs,
-                  checkpoint,
                   dataset,
                   data_func,
                   gpus,
@@ -158,7 +134,7 @@ def parallel_test(model_cls,
     workers = [
         ctx.Process(
             target=worker_func,
-            args=(model_cls, model_kwargs, checkpoint, dataset, data_func,
+            args=(model_cls, model_kwargs, dataset, data_func,
                   gpus[i % len(gpus)], idx_queue, result_queue))
         for i in range(num_workers)
     ]
@@ -185,84 +161,7 @@ def parallel_test(model_cls,
     return results, logs
 
 
-def det_bboxes(bboxes,
-              labels,
-              class_names=None,
-              class_to_keep=None,
-              score_thr=0,
-              ):
-    """Save bboxes and class labels (with scores) on an image.
-    Args:
-        bboxes (ndarray): Bounding boxes (with scores), shaped (n, 4) or
-            (n, 5).
-        labels (ndarray): Labels of bboxes.
-        class_names (list[str]): Names of each classes.
-        class_to_keep (list[str]): Classes to keep (cars, trucks...)
 
-        score_thr (float): Minimum score of bboxes to be shown.
-
-    """
-    assert bboxes.ndim == 2
-    assert labels.ndim == 1
-    assert bboxes.shape[0] == labels.shape[0]
-    assert bboxes.shape[1] == 4 or bboxes.shape[1] == 5
-
-    if score_thr > 0:
-        assert bboxes.shape[1] == 5
-        scores = bboxes[:, -1]
-        inds = scores > score_thr
-        bboxes = bboxes[inds, :]
-        labels = labels[inds]
-
-    to_save = []
-
-
-    for bbox, label in zip(bboxes, labels):
-        bbox_int = bbox.astype(np.int32)
-        label_text = class_names[
-            label] if class_names is not None else 'cls {}'.format(label)
-
-        if label_text in class_to_keep:
-            to_save.append({'x1':bbox_int[0],'y1':bbox_int[1],
-                            'x2':bbox_int[2],'y2':bbox_int[3],
-                            'class':label_text,'score':bbox[-1]})
-
-    return to_save
-
-def save_result(result,
-                class_to_keep=[],
-                dataset='coco',
-                score_thr=0.3
-                ):
-
-    """Return list dict [{x1,x2,y1,y2,classe,score},...]
-    Args:
-        results:
-        class_to_keep (list[str]): Classes to keep (cars, trucks...)
-        score_thr (float): Minimum score of bboxes to be shown.
-    """
-    class_names = get_classes(dataset)
-    labels = [
-        np.full(bbox.shape[0], i, dtype=np.int32)
-        for i, bbox in enumerate(result)
-    ]
-    labels = np.concatenate(labels)
-    bboxes = np.vstack(result)
-
-    return  det_bboxes(
-        bboxes,
-        labels,
-        class_names=class_names,
-        class_to_keep=class_to_keep,
-        score_thr=score_thr)
-
-
-modele = dict(conf="retinanet_x101_64x4d_fpn_1x",
-          checkpoint="retinanet_x101_64x4d_fpn_1x_20181218-2f6f778b")
-
-
-modele = dict(conf="retinanet_r50_fpn_1x",
-              checkpoint="retinanet_r50_fpn_1x_20181125-3d3c2142")
 
 def _data_func(data, device_id):
     data = scatter(collate([data], samples_per_gpu=1), [device_id])[0]
@@ -270,7 +169,7 @@ def _data_func(data, device_id):
 
 
 def test_CustomDataset():
-    img_df = load_data()
+    img_df = load_data('vit_files_img_xml_trunc',nrows=1e2)
     cfg = load_config(modele)
     print(img_df.shape[0])
     car_dataset = CustomDataset(img_df, ROOT_DIR,**cfg.data.val)
@@ -280,36 +179,34 @@ def test_CustomDataset():
     first_element = car_dataset[0]
     print(first_element)
 
-def run_detection(cfg,car_dataset, gpus ,workers_per_gpu, checkpoint):
+def run_detection(car_dataset, gpus ,workers_per_gpu, modele):
+
+    config_file = os.path.join('/workspace/mmdetection/configs', f"{modele['conf']}.py")
+    checkpoint_file = os.path.join('/model/retina', f"{modele['checkpoint']}.pth")
+    cfg = load_config(modele)
+
+    model = init_detector(config_file, checkpoint_file)
+
+    data_loader = build_dataloader(
+        car_dataset,
+        imgs_per_gpu=1,
+        workers_per_gpu=workers_per_gpu,
+        num_gpus=1,
+        dist= (gpus >= 1),
+        shuffle=False)
 
     if gpus == 1:
         show = False
-        model = build_detector(cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
-        _ = load_checkpoint(model, checkpoint)
+        #_ = load_checkpoint(model, checkpoint)
         model = MMDataParallel(model, device_ids=[0])
-
-        data_loader = build_dataloader(
-            car_dataset,
-            imgs_per_gpu=1,
-            workers_per_gpu=workers_per_gpu,
-            num_gpus=1,
-            dist=False,
-            shuffle=False)
-
         outputs = single_test(model, data_loader, show)
 
     else:
-        model_args = cfg.model.copy()
-        model_args.update(train_cfg=None, test_cfg=cfg.test_cfg)
-        model_type = getattr(detectors, model_args.pop('type'))
-        outputs = parallel_test(
-            model_type,
-            model_args,
-            checkpoint,
-            car_dataset,
-            _data_func,
-            range(gpus),
-            workers_per_gpu=workers_per_gpu)
+
+        init_dist('pytorch', **cfg.dist_params)
+
+        model = MMDistributedDataParallel(model.cuda())
+        outputs = multi_gpu_test(model, data_loader, args.tmpdir)
 
     return outputs
 
@@ -318,16 +215,14 @@ def chunker(seq, size):
 
 def main():
     # Build dataset
-    gpus = 4
+    gpus = 1
     workers_per_gpu = 4
-    nrows = 1e8
-    chunksize = int(1e3)
+    nrows = 1e2
+    chunksize = int(1e2)
 
-    dataset = 'img3_prepared'
-    log_dataset = 'log3_%s'%modele['conf']
-    box_dataset = 'box3_%s'%modele['conf']
-
-    checkpoint = '/model/%s.pth'%modele['checkpoint']
+    dataset = 'vit_files_img_xml_trunc'
+    log_dataset = 'log_%s'%modele['conf']
+    box_dataset = 'box_%s'%modele['conf']
 
     cfg = load_config(modele)
 
@@ -335,16 +230,16 @@ def main():
     print(img_df.shape)
 
     # load dataset on db and filter images never processed
+    """
     img_db = read_dataframe(API_KEY_VIT, VERTICA_HOST, PROJECT_KEY_VIT, log_dataset, columns=['path','img_name'])
     img_db = img_db.eval('path + img_name').unique()
     print('there is %s images seen'%len(img_db))
     img_df = img_df.loc[~img_df.eval('path + img_name').isin(img_db),:]
 
     print("Need to process : %s images"%img_df.shape[0])
-
+    """
     col_seg = ['img_name','path','x1','y1','x2','y2',
                                     'class','score']
-
 
 
     for chunk_df in chunker(img_df, chunksize):
@@ -353,7 +248,7 @@ def main():
         print(len(car_dataset))
 
 
-        outputs, logs = run_detection(cfg, car_dataset, gpus ,workers_per_gpu, checkpoint)
+        outputs, logs = run_detection(car_dataset, gpus ,workers_per_gpu, modele)
 
         img_seg = pd.DataFrame(columns=col_seg)
         log_seg = pd.DataFrame(columns=['img_name','path','traceback'])
@@ -366,7 +261,7 @@ def main():
             to_save_df = pd.DataFrame(to_save)
             to_save_df['img_name'] = row['img_name']
             to_save_df['path'] = row['path']
-
+            print(to_save_df)
             img_seg = pd.concat([img_seg, to_save_df],
                     ignore_index=True,sort=False)
 

@@ -12,9 +12,9 @@ services:
     ipc: host
     cpus: 16
     env_file:
-      - docker/env.list
+      - docker/env.list3
     environment:
-     - NVIDIA_VISIBLE_DEVICES=0,1,2,3
+     - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
      - TORCH_MODEL_ZOO=/model
      - http_proxy=${http_proxy}
      - https_proxy=${http_proxy}

@@ -37,7 +37,6 @@ RUN mkdir /.cache && chmod -R a+rw /.cache/
 
 #END OF MMDET INSTALL
 WORKDIR /workspace
-RUN conda config --set auto_update_conda false
 RUN python3 -m pip install jupyter
 
 RUN jupyter notebook --generate-config
@@ -50,6 +49,5 @@ RUN python setup.py install
 WORKDIR /workspace/iaflash
 RUN  pip install -e .
 
-# to launch the service:
-#jupyter notebook --ip=0.0.0.0 --no-browser --allow-root
+RUN pip install pytest
 CMD [ "python3", "./iaflash/app/app.py" ]

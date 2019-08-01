@@ -29,7 +29,7 @@ import torchvision.models as models
 import iaflash
 from iaflash.classification.custom_generator import DatasetDataframe, Crop, SquareCrop
 from iaflash.classification.simple_sampler import DistributedSimpleSampler
-from iaflash.classification.utils import gather_evaluation, build_result
+from iaflash.classification.utils import gather_evaluation, build_result, parallel2single
 
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
@@ -93,6 +93,9 @@ parser.add_argument('--val-csv', default=None, type=str,
 
 parser.add_argument('--root-dir', default=None, type=str,
                     help='root-dir, default ROOT_DIR')
+
+parser.add_argument('--save-last-deep-layer',action='store_true',
+                    help='Save last deep layer')
 best_acc1 = 0
 
 # create model
@@ -149,7 +152,10 @@ def main(args):
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
-    ngpus_per_node = torch.cuda.device_count()
+    if args.distributed :
+        ngpus_per_node = torch.cuda.device_count()
+    else :
+        ngpus_per_node = 1
     print("SEE %s GPUs"%ngpus_per_node)
 
     if args.multiprocessing_distributed:
@@ -169,6 +175,7 @@ def main(args):
     probabilities = gather_evaluation(os.path.join(args.path_val_csv ,'probabilities.csv'), ngpus_per_node)
     targets = gather_evaluation(os.path.join(args.path_val_csv ,'targets.csv'), ngpus_per_node)
     indices = gather_evaluation(os.path.join(args.path_val_csv,'indices.csv'), ngpus_per_node)
+    last_layer = gather_evaluation(os.path.join(args.path_val_csv,'last_layer.npy'), ngpus_per_node)
 
     # confusion_matrix
     confusion = calculate_cm(probabilities.values, targets.values)
@@ -239,6 +246,17 @@ def main_worker(gpu, ngpus_per_node, args):
 
     model.fc = nn.Linear(512, args.num_classes) # assuming that the fc7 layer has 512 neurons, otherwise change it
 
+
+    # hook the layer4
+    if args.save_last_deep_layer:
+        finalconv_name = 'layer4'
+        # Hook the feature extractor
+        def hook_feature(module, input, output):
+            global features_blobs
+            features_blobs = output.data.cpu().numpy()
+            #print(features_blobs.shape)
+        model._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
     if args.distributed:
         print("Distributed")
         # For multiprocessing distributed, DistributedDataParallel constructor
@@ -261,6 +279,7 @@ def main_worker(gpu, ngpus_per_node, args):
     elif args.gpu is not None:
         torch.cuda.set_device(args.gpu)
         model = model.cuda(args.gpu)
+        print('USE GPU %s'%args.gpu)
     else:
         # DataParallel will divide and allocate batch_size to all available GPUs
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
@@ -289,12 +308,16 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.gpu is not None:
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
+                checkpoint['state_dict'] = parallel2single(checkpoint['state_dict'] )
+
+                # end of patch
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
+
 
 
     # define loss function (criterion) and optimizer
@@ -306,7 +329,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
         print("Use GPU: {} for training".format(args.gpu))
 
-    # Data Loading Code
+    # Data Loading Code    --multiprocessing-distributed \
+
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     crop = SquareCrop()
@@ -346,7 +370,7 @@ def main_worker(gpu, ngpus_per_node, args):
         num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
+        val_dataset, batch_size=args.batch_size, shuffle=False,
         num_workers=args.workers, pin_memory=True, sampler=val_sampler)
 
     '''
@@ -459,11 +483,13 @@ def validate(val_loader, model, criterion, args):
     predictions = []
     probabilities = []
     targets = []
+    if args.save_last_deep_layer:
+        last_layer = None
+
     # switch to evaluate mode
     model.eval()
 
     indices = list(val_loader.sampler)
-
 
     with torch.no_grad():
         end = time.time()
@@ -474,6 +500,12 @@ def validate(val_loader, model, criterion, args):
 
             # compute output
             output = model(input)
+            if args.save_last_deep_layer:
+                if last_layer is not None:
+                    last_layer = np.concatenate((last_layer, features_blobs),axis=0)
+                else:
+                    last_layer = features_blobs
+
             loss = criterion(output, target)
 
             # measure accuracy and record loss
@@ -518,16 +550,17 @@ def validate(val_loader, model, criterion, args):
         print("save predictions to %s"%os.path.join(args.path_val_csv))
         # Save predictions
         pd.DataFrame(predictions).to_csv(os.path.join(args.path_val_csv , 'predictions_%s.csv' % args.gpu), header=False, index=False)
-
         # Save probabilities
         pd.DataFrame(probabilities).to_csv(os.path.join(args.path_val_csv , 'probabilities_%s.csv' % args.gpu), header=False, index=False)
-
         # Save target
         pd.DataFrame(targets).to_csv(os.path.join(args.path_val_csv , 'targets_%s.csv' % args.gpu), header=False, index=False)
-
         # Save indices
         pd.DataFrame(indices).to_csv(os.path.join(args.path_val_csv , 'indices_%s.csv' % args.gpu), header=False, index=False)
 
+        # Save last layer
+        if args.save_last_deep_layer:
+            #pd.DataFrame(last_layer).to_csv(os.path.join(args.path_val_csv , 'last_layer_%s.csv' % args.gpu), header=False, index=False)
+            np.save(os.path.join(args.path_val_csv , 'last_layer_%s.npy' % args.gpu),last_layer)
 
 
         print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'

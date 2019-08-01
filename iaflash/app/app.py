@@ -6,7 +6,7 @@ from flask import Flask, render_template, Response, render_template_string, send
 
 import pandas as pd
 from iaflash.environment import ROOT_DIR
-from iaflash.filter import filter
+from iaflash.filter import read_df, dict2args
 WIDTH = 600
 HEIGHT = 400
 
@@ -83,7 +83,8 @@ def images_csv(csvpath):
 
     print(df.head())
     for i, row in df.iterrows():
-        filename = os.path.join(ROOT_DIR,row['img_path'])
+        #ROOT_DIR = "/vgdata/sources/verbalisations/antai"
+        filename = os.path.join(ROOT_DIR, row['img_path'])
         im = Image.open(filename)
         w, h = im.size
         aspect = 1.0*w/h
@@ -109,7 +110,7 @@ def images_csv(csvpath):
 @app.route('/explore')
 def images_explore():
     images = []
-    df = filter(**request.args)
+    df = read_df(dict2args(request.args))
     print(df.head())
     col_img = request.args.get('col_img', 'img_name')
     query = request.args.get('query', None)

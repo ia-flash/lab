@@ -24,6 +24,7 @@ from .simple_sampler import DistributedSimpleSampler
 def gather_evaluation(filename, gpu):
     base_filename, file_extension = os.path.splitext(filename)
     df = pd.DataFrame()
+    arr = None
     print(gpu)
 
     if os.path.isfile(filename):
@@ -33,11 +34,24 @@ def gather_evaluation(filename, gpu):
     for i in range(gpu) :
         filename_i = base_filename + '_%s'%i + file_extension
         print('read %s'%filename_i)
-        df_i = pd.read_csv(filename_i,header=None)
-        df = pd.concat([df, df_i], ignore_index=True,axis=0)
+        if file_extension == ".csv":
+            print('Pandas concat')
+            df_i = pd.read_csv(filename_i,header=None)
+            df = pd.concat([df, df_i], ignore_index=True,axis=0)
+        elif file_extension == ".npy":
+            arr_i = np.load(filename_i)
+            if arr is None : # first time
+                arr = arr_i
+            else:
+                arr = np.concatenate((arr,arr_i), axis=0)
+
         os.remove(filename_i)
 
-    df.to_csv(filename, header=False, index=False)
+    if file_extension == ".csv":
+        df.to_csv(filename, header=False, index=False)
+
+    elif file_extension == ".npy":
+        np.save(filename, arr)
     return df
 
 
@@ -57,8 +71,7 @@ def build_result(model_path, dataset):
            probabilities.max(axis=1).rename('proba')], axis=1)
 
     results.drop_duplicates(subset = 'index', inplace=True) # remove added rows to complete batch
-    results.set_index('index', inplace=True)
-
+    results.index = results['index']
 
     #dataset = 'train.csv'
     df = pd.read_csv(dataset, usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
@@ -96,6 +109,19 @@ def dict2args(dict):
 
     return args
 
+def parallel2single(state_dict):
+    """
+    load a model trained with parallelism
+    Effect :  remove 'module.' of dataparallel
+    """
+    # TODO : find a test
+    from collections import OrderedDict
+    new_state_dict: Dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k[7:]  # remove 'module.' of dataparallel
+        new_state_dict[name] = v
+
+    return new_state_dict
 
 def load_model(args, ngpus_per_node):
 
