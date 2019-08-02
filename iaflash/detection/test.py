@@ -174,8 +174,10 @@ def main():
         else:
             outputs, logs = multi_gpu_test(model, data_loader)
 
+        indices = list(data_loader.sampler)
+
         # Convert and save
-        for (_,row), results, traceback  in zip(chunk_df.iterrows(), outputs, logs):
+        for (_,row), results, traceback  in zip(chunk_df.iloc[indices,:].iterrows(), outputs, logs):
             to_save = save_result(results,
                         class_to_keep=class_to_keep,
                         dataset='coco',
