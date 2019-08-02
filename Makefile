@@ -35,7 +35,7 @@ exec:
 	$(COMPOSE) exec torch-notebook bash
 
 logs:
-		$(COMPOSE) logs -f --tail 50
+	$(COMPOSE) logs -f --tail 50
 
 test:
 	$(COMPOSE) exec torch-notebook pytest 
