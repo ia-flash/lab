@@ -60,7 +60,7 @@ def images_csv(csvpath):
     images = []
     dirname = os.path.dirname(csvpath)
     filename = os.path.join('/', csvpath)
-    df = pd.read_csv(filename)#.sample(10000)
+    df = pd.read_csv(filename, nrows=int(limit))#.sample(10000)
     #df_val = df_val[df_val['x1'].notnull()]
 
     classes_ids = read_class_reference(dirname)
@@ -75,15 +75,17 @@ def images_csv(csvpath):
         print(query)
         df = df.query(query)
 
+    """
     if limit :
         df = df.sample(int(limit))
-
+    """
+    
     df['img_path'] = df['img_path'].astype(str)
     df = df.sort_values(by =['img_path'],  ascending=False)
 
     print(df.head())
     for i, row in df.iterrows():
-        #ROOT_DIR = "/vgdata/sources/verbalisations/antai"
+        ROOT_DIR = "/vgdata/sources/verbalisations/antai"
         filename = os.path.join(ROOT_DIR, row['img_path'])
         im = Image.open(filename)
         w, h = im.size
@@ -109,6 +111,7 @@ def images_csv(csvpath):
 
 @app.route('/explore')
 def images_explore():
+    ROOT_DIR = '/vgdata/sources/verbalisations/antai'
     images = []
     df = read_df(dict2args(request.args))
     print(df.head())

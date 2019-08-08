@@ -333,7 +333,8 @@ def main_worker(gpu, ngpus_per_node, args):
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
-    crop = SquareCrop()
+    #crop = SquareCrop()
+    crop = Crop()
     # iterate images
     train_dataset = DatasetDataframe(
         args.root_dir,
@@ -698,4 +699,13 @@ python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained -
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0  /model/resnet18-100-2
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --resume /model/model_best.pth.tar --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102-refined-square
+
+nohup python -m iaflash.classification.main_classifier -a resnet18 \
+--lr 0.01 --batch-size 256  \
+--pretrained \
+--dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' \
+--multiprocessing-distributed --world-size 1 --rank 0 \
+--workers 16
+/model/resnet18-151 > train-151.out &
+
 """

@@ -3,22 +3,35 @@ import pandas as pd
 from io import StringIO
 
 import vertica_python
+import psycopg2
+
 #import vertica_db_client
 import dataikuapi as dka
 
 
 
-def read_dataframe(apiKey,host,keyProject,dataset_name,columns=[],conditions="",limit=-1,sampling=-1):
+def read_dataframe(apiKey, host, keyProject, dataset_name, columns=[], conditions="", limit=-1, sampling=-1, connector='vertica'):
 
-    dataset_name = '%s_%s'%(keyProject,dataset_name)
+    dataset_name = '%s_%s'%(keyProject, dataset_name)
 
-    cxn = {"user":'dbadmin',
-       "password":'',
-       "host" :host,
-       "port":5433,
-       "database":"docker"}
+    if connector == 'vertica' :
+        cxn = dict(user = 'dbadmin',
+                   password = '',
+                   host = host,
+                   port = 5433,
+                   database = "docker")
+        lib = vertica_python
 
-    engine = vertica_python.connect(**cxn)
+    elif connector == 'postgres' :
+        cxn = dict(user = "postgres",
+                  password = "postgres",
+                  host = host,
+                  port = 5432,
+                  database = "postgres")
+        lib = psycopg2
+
+    print('Connexion parameters : {}'.format(cxn))
+    engine = lib.connect(**cxn)
 
     if conditions != '':
         conditions = 'WHERE %s '%conditions
@@ -29,11 +42,12 @@ def read_dataframe(apiKey,host,keyProject,dataset_name,columns=[],conditions="",
             conditions = ' WHERE random() < %s '% sampling
 
     if len(columns)>0:
-        req = """SELECT {columns} FROM {table} {conditions}""".format(columns=','.join(columns),
+        columns =  ["\"%s\""%col for col in columns]
+        req = """SELECT {columns} FROM "{table}" {conditions}""".format(columns=','.join(columns),
         table=dataset_name,
         conditions=conditions)
     else:
-        req = """SELECT * FROM {table} {conditions}""".format(table=dataset_name,    conditions=conditions)
+        req = """SELECT * FROM "{table}" {conditions}""".format(table=dataset_name, conditions=conditions)
 
 
     if int(limit) > 0:

@@ -19,7 +19,7 @@ print(df)
 
 def format_str_col(args):
     print(args)
-    req = """ALTER TABLE "{table_name}" ALTER COLUMN {column_name} TYPE varchar(256);""".format(**args)
+    req = """ALTER TABLE "{table_name}" ALTER COLUMN "{column_name}" TYPE varchar(256);""".format(**args)
     print(req)
 
     cur.execute(req)

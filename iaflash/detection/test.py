@@ -126,11 +126,11 @@ def main():
 
     # build the dataloader
     # TODO: support multiple images per gpu (only minor changes are needed)
-    nrows = 1e8
+    nrows = 100
     chunksize = int(4*1e3)
     dataset = 'vit_files_img_xml_trunc'
-    log_dataset = 'log_%s'%modele
-    box_dataset = 'box_%s'%modele
+    log_dataset = 'log_%s_test'%modele
+    box_dataset = 'box_%s_test'%modele
     img_df = load_data(dataset, nrows=nrows)
     print(img_df.shape)
 
