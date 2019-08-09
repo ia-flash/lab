@@ -175,7 +175,8 @@ def main(args):
     probabilities = gather_evaluation(os.path.join(args.path_val_csv ,'probabilities.csv'), ngpus_per_node)
     targets = gather_evaluation(os.path.join(args.path_val_csv ,'targets.csv'), ngpus_per_node)
     indices = gather_evaluation(os.path.join(args.path_val_csv,'indices.csv'), ngpus_per_node)
-    last_layer = gather_evaluation(os.path.join(args.path_val_csv,'last_layer.npy'), ngpus_per_node)
+    if args.save_last_deep_layer:
+        last_layer = gather_evaluation(os.path.join(args.path_val_csv,'last_layer.npy'), ngpus_per_node)
 
     # confusion_matrix
     confusion = calculate_cm(probabilities.values, targets.values)
@@ -186,7 +187,6 @@ def main(args):
 
 def main_worker(gpu, ngpus_per_node, args):
 
-    print("***" + str(args.workers) + "****")
 
     global best_acc1
     args.gpu = gpu
@@ -203,9 +203,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
 
     valdir = os.path.join(args.val_csv)
+    print('Read val csv : %s'%valdir)
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     #dfval = dfval[dfval['x1'].notnull()]
     assert (dfval['img_path'].notnull() & dfval['img_path']!='').any()
+    assert dfval['target'].max() < args.num_classes , "t >= n_classes : %s"%dfval['target'].max()
+    assert dfval['target'].min() >= 0, "t < 0 : %s"% dfval['target'].min()
 
     dfval['target'] = dfval['target'].astype(int)
     print('%s Images in the val set'%dfval.shape[0])
@@ -231,6 +234,8 @@ def main_worker(gpu, ngpus_per_node, args):
             args.rank = args.rank * ngpus_per_node + gpu
         # This blocks until all processes have joined.
         print("world_size : %s"%args.world_size)
+        print("*** " + str(args.workers) + " workers on gpu " + str(args.gpu) + "****")
+
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
 
@@ -302,14 +307,17 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.resume :
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
-            checkpoint = torch.load(args.resume)
+            checkpoint = torch.load(args.resume, map_location={'cuda:0':'cuda:%s'%args.gpu})
             args.start_epoch = checkpoint['epoch']
             best_acc1 = checkpoint['best_acc1']
             if args.gpu is not None:
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
-                checkpoint['state_dict'] = parallel2single(checkpoint['state_dict'] )
 
+                if not args.distributed and ('module' in checkpoint['state_dict'][checkpoint['state_dict'].keys[0]]) :
+                    print('"module" in state_dict : Modele was trained on parallel gpus and the current inference is on single gpu')
+                    print('conversion ...')
+                    checkpoint['state_dict'] = parallel2single(checkpoint['state_dict'])
                 # end of patch
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
@@ -699,13 +707,14 @@ python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained -
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0  /model/resnet18-100-2
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102
 python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --resume /model/model_best.pth.tar --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0   /model/resnet18-102-refined-square
+python main_classifier.py -a resnet18 --lr 0.01 --batch-size 256  --pretrained --evaluate --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0 /model/test2
 
 nohup python -m iaflash.classification.main_classifier -a resnet18 \
 --lr 0.01 --batch-size 256  \
 --pretrained \
 --dist-url 'tcp://127.0.0.1:1234' --dist-backend 'nccl' \
 --multiprocessing-distributed --world-size 1 --rank 0 \
---workers 16
+--workers 16 \
 /model/resnet18-151 > train-151.out &
 
 """

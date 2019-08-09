@@ -8,11 +8,7 @@ import psycopg2
 #import vertica_db_client
 import dataikuapi as dka
 
-
-
-def read_dataframe(apiKey, host, keyProject, dataset_name, columns=[], conditions="", limit=-1, sampling=-1, connector='vertica'):
-
-    dataset_name = '%s_%s'%(keyProject, dataset_name)
+def connect(host, connector ):
 
     if connector == 'vertica' :
         cxn = dict(user = 'dbadmin',
@@ -32,6 +28,12 @@ def read_dataframe(apiKey, host, keyProject, dataset_name, columns=[], condition
 
     print('Connexion parameters : {}'.format(cxn))
     engine = lib.connect(**cxn)
+    return engine
+
+def read_dataframe(apiKey, host, keyProject, dataset_name, columns=[], conditions="", limit=-1, sampling=-1, connector='vertica'):
+
+    dataset_name = '%s_%s'%(keyProject, dataset_name)
+    engine = connect(host, connector)
 
     if conditions != '':
         conditions = 'WHERE %s '%conditions

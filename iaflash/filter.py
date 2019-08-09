@@ -139,7 +139,7 @@ def dict2args(dict):
 def filter(**filt_dict):
     # init Namespace object from parser init states
 
-    dict2args(filt_dict)
+    args = dict2args(filt_dict)
     main(args)
     """
     return read_df(args)
@@ -191,17 +191,18 @@ def read_df(args):
         if type(args.radar) is str:
             args.radar = args.radar.split(",")
         conditions += ' AND '
-        conditions += 'TYPEEQUIP_Libelle IN (%s) ' %', '.join(["'%s'"%radar_type[col] for col in  args.radar])
+        conditions += '"TYPEEQUIP_Libelle" IN (%s) ' %', '.join(["'%s'"%col for col in  args.radar])
 
     if args.where :
         if conditions != '':
             conditions += ' AND '
         conditions +=  '(' + args.where + ')'
 
-
+    """
     if conditions != '':
         conditions += ' AND '
-
+    """
+    
     if args.not_null:
         conditions_not_null = ' AND '.join(['%s IS NOT NULL'%col for col in args.not_null])
         print(conditions_not_null)
@@ -309,14 +310,15 @@ python filter.py --table CarteGrise_norm_melt_joined --status 4 6 13 --dir /mode
 python filter.py --table CarteGrise_norm_melt_joined2 --status 4 6 13 --dir /model/resnet18-150 --nb_classes 160 --score 0.95  --sampling 0 --limit 0   --where "(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')"
 
 # resnet18-151
-python -m iaflash.filter --table cartegrise_norm_melt_joined_psql --status 4 6 13 --dir /model/resnet18-151  \
+
+time python -m iaflash.filter --table cartegrise_norm_melt_joined_psql --status 4 6 13 --dir /model/resnet18-151  \
 --class_list /model/classes-2018-151.csv  --sampling 0 --limit 0 --score 0.95 \
 --where "(\"TYPEEQUIP_Libelle\"='ETC' AND img_name LIKE '%_1.jpg') OR (\"TYPEEQUIP_Libelle\"!='ETC')" \
 --api-key dummyKey_VBfL5V9czGa9a77kcVzmwZcQvdjt8oBk \
 --project-key 'VIT3' \
 --vertica-host 192.168.4.25 \
---connector postgres
---shuffle
+--connector postgres \
+--shuffle \
 --not-null x1 path img_name
 
 
