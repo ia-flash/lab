@@ -11,6 +11,7 @@ RUN apt-get update && \
             libsm6 \
             libxext6 \
             libxrender-dev \
+            libpq-dev \
             python3 \
             python-opencv \
             python3-pip && \
@@ -49,5 +50,4 @@ RUN python setup.py install
 WORKDIR /workspace/iaflash
 RUN  pip install -e .
 
-RUN pip install pytest
 CMD [ "python3", "./iaflash/app/app.py" ]
