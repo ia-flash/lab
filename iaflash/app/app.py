@@ -56,11 +56,15 @@ def images():
 def images_csv(csvpath):
     query = request.args.get('query', None)
     limit = request.args.get('limit', None)
+    if limit:
+        nrows = int(limit)
+    else:
+        nrows = None
 
     images = []
     dirname = os.path.dirname(csvpath)
     filename = os.path.join('/', csvpath)
-    df = pd.read_csv(filename, nrows=int(limit))#.sample(10000)
+    df = pd.read_csv(filename, nrows=nrows)#.sample(10000)
     #df_val = df_val[df_val['x1'].notnull()]
 
     classes_ids = read_class_reference(dirname)
@@ -79,7 +83,7 @@ def images_csv(csvpath):
     if limit :
         df = df.sample(int(limit))
     """
-    
+
     df['img_path'] = df['img_path'].astype(str)
     df = df.sort_values(by =['img_path'],  ascending=False)
 

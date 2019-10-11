@@ -198,12 +198,10 @@ def read_df(args):
             conditions += ' AND '
         conditions +=  '(' + args.where + ')'
 
-    """
-    if conditions != '':
-        conditions += ' AND '
-    """
-    
+
     if args.not_null:
+        if conditions != '':
+            conditions += ' AND '
         conditions_not_null = ' AND '.join(['%s IS NOT NULL'%col for col in args.not_null])
         print(conditions_not_null)
         conditions += conditions_not_null

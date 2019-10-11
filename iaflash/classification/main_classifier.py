@@ -201,11 +201,12 @@ def main_worker(gpu, ngpus_per_node, args):
     args.num_classes = len(args.all_categories)
     print('%s Classes'%args.num_classes)
 
-
+    frac = 1
     valdir = os.path.join(args.val_csv)
     print('Read val csv : %s'%valdir)
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     #dfval = dfval[dfval['x1'].notnull()]
+    dfval = dfval.sample(frac=frac ,replace=False, random_state=123)
     assert (dfval['img_path'].notnull() & dfval['img_path']!='').any()
     assert dfval['target'].max() < args.num_classes , "t >= n_classes : %s"%dfval['target'].max()
     assert dfval['target'].min() >= 0, "t < 0 : %s"% dfval['target'].min()
@@ -313,8 +314,7 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.gpu is not None:
                 # best_acc1 may be from a checkpoint from a different GPU
                 best_acc1 = best_acc1.to(args.gpu)
-
-                if not args.distributed and ('module' in checkpoint['state_dict'][checkpoint['state_dict'].keys[0]]) :
+                if not args.distributed and ('module' in list(checkpoint['state_dict'].keys())[0]) :
                     print('"module" in state_dict : Modele was trained on parallel gpus and the current inference is on single gpu')
                     print('conversion ...')
                     checkpoint['state_dict'] = parallel2single(checkpoint['state_dict'])
