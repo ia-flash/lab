@@ -149,7 +149,7 @@ def read_df(args):
 
     if args.columns :
         if type(args.columns) is str:
-            args.columns = ["\"%s\""%col for col in args.columns.split(",")]
+            args.columns = ["%s"%col for col in args.columns.split(",")]
 
 
     if args.class_list:
@@ -224,7 +224,8 @@ def read_df(args):
 
     df = df[df.notnull()]
     print("Drop duplicates ...")
-    df.drop_duplicates('img_name',inplace=True)
+    #df.drop_duplicates('img_name',inplace=True)
+    df.drop_duplicates(inplace=True)
 
     if args.shuffle : # shuffle but take care that img1 and img2 are bounded
         print('Start shufffing data ...')

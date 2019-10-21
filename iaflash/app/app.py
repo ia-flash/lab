@@ -119,6 +119,7 @@ def images_explore():
     images = []
     df = read_df(dict2args(request.args))
     print(df.head())
+    print('Retrieve %s rows'%df.shape[0])
     col_img = request.args.get('col_img', 'img_name')
     query = request.args.get('query', None)
 

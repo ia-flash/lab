@@ -21,6 +21,7 @@ def imshow(img, win_name='', wait_time=0,ax=None):
     if ax is not None:
         ax.imshow(img2)
         ax.axis('off')
+        print('plot')
     """
     else:
         plt.imshow(img2)

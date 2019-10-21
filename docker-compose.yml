@@ -33,6 +33,8 @@ services:
      - /home/notebooks:/workspace
      - ./:/workspace/iaflash
      - /home/${USER}/src/mmdetection/mmdet/datasets:/workspace/mmdetection/mmdet/datasets
+     - /home/${USER}/src/mmdetection/mmdet/core:/workspace/mmdetection/mmdet/core
+
      - /home/${USER}/src/IIC:/workspace/IIC
      - /home/notebooks/.jupyter:/root/.jupyter
     command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/workspace"

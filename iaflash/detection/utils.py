@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from iaflash.environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
+from iaflash.dss.api import read_dataframe
 from mmdet.core import get_classes
 import numpy as np
 
@@ -81,11 +82,11 @@ def save_result(result,
         class_to_keep=class_to_keep,
         score_thr=score_thr)
 
-def load_data(dataset_name = 'img_MIF',nrows=1e3):
+def load_data(dataset_name = 'img_MIF',nrows=1e3,columns=['path','img1','img2'],**args):
     # cached the dataset as csv
     dataset_path = os.path.join(DSS_DIR,'{}.csv'.format(dataset_name))
     if not os.path.isfile(dataset_path):
-        img_MIF_df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name, columns=['path','img1','img2'])
+        img_MIF_df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,dataset_name, columns=columns,**args)
         img_MIF_df.to_csv(dataset_path)
     else:
         print('Read cached csv : %s'%dataset_path)
@@ -108,7 +109,8 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
             value_name='img_name').sort_values('path')
 
     # filter only .jpg extension
-
+    else:
+        img_df = img_MIF_df.copy(deep=True)
     img_df = img_df[(img_df.img_name != "") & (img_df.path != "")]
     img_df.dropna(subset=['path','img_name'],inplace=True,how='any')
     img_df = img_df[img_df.img_name.str.contains('.jpg')]
@@ -116,3 +118,16 @@ def load_data(dataset_name = 'img_MIF',nrows=1e3):
     img_df.reset_index(inplace=True)
 
     return img_df
+
+
+
+class StructuredMessage(object):
+    """
+    Dump json logger object, like a fileHandler.
+    Useful for writing results in case of multiprocessing
+    """
+    def __init__(self,  **kwargs):
+        self.kwargs = kwargs
+
+    def __str__(self):
+        return json.dumps(self.kwargs)
