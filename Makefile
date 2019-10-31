@@ -16,10 +16,18 @@ export NVIDIA_VISIBLE_DEVICES
 PYTHONUNBUFFERED=1
 export PYTHONUNBUFFERED
 
-dev:
+docker/env.list:
+	# Copy default config
+	cp docker/env.list.sample docker/env.list
+
+docker/conf.list:
+	# Copy default config
+	cp docker/conf.list.sample docker/conf.list
+
+dev: docker/env.list docker/conf.list
 	$(COMPOSE) up
 
-up:
+up: docker/env.list docker/conf.list
 	$(COMPOSE) up -d
 
 stop:

@@ -1,4 +1,13 @@
+# Docker project name
 PROJECT_NAME=iaflash_journevi
+
+# Nvidia visiable id devices. 
+# 4 devices: 0,1,2,3. 
+# Default is one device: 0
 NVIDIA_VISIBLE_DEVICES=0
+
+# Notebook exposition port
 NOTEBOOK_PORT=8887
+
+# Flask application port
 APP_PORT=9997
