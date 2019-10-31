@@ -37,9 +37,12 @@ services:
 
      - /home/${USER}/src/IIC:/workspace/IIC
      - /home/notebooks/.jupyter:/root/.jupyter
-    command: "jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/workspace"
-
-
+    command:
+      - /bin/sh
+      - -c
+      - |
+          python3 ./iaflash/app/app.py &
+          jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/workspace
 
 networks:
   isolated_nw:
