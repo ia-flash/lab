@@ -82,7 +82,7 @@
               <div class="local-toc"><ul>
 <li><a class="reference internal" href="#">Welcome to IAFlash Lab’s documentation!</a></li>
 <li><a class="reference internal" href="#contents">Contents</a><ul>
-<li><a class="reference internal" href="#main-app">Main app</a></li>
+<li><a class="reference internal" href="#module-classification.main_classifier">Main app</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
@@ -158,8 +158,38 @@
 <div class="section" id="contents">
 <h1>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h1>
 <p>Application modules</p>
-<div class="section" id="main-app">
-<h2>Main app<a class="headerlink" href="#main-app" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="module-classification.main_classifier">
+<span id="main-app"></span><h2>Main app<a class="headerlink" href="#module-classification.main_classifier" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="classification.main_classifier.AverageMeter">
+<em class="property">class </em><code class="descclassname">classification.main_classifier.</code><code class="descname">AverageMeter</code><a class="headerlink" href="#classification.main_classifier.AverageMeter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes and stores the average and current value</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="classification.main_classifier.accuracy">
+<code class="descclassname">classification.main_classifier.</code><code class="descname">accuracy</code><span class="sig-paren">(</span><em>output</em>, <em>target</em>, <em>topk=(1</em>, <em>)</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.accuracy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the accuracy over the k top predictions for the specified values of k</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="classification.main_classifier.adjust_learning_rate">
+<code class="descclassname">classification.main_classifier.</code><code class="descname">adjust_learning_rate</code><span class="sig-paren">(</span><em>optimizer</em>, <em>epoch</em>, <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.adjust_learning_rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the learning rate to the initial LR decayed by 10 every 30 epochs</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="classification.main_classifier.calculate_cm">
+<code class="descclassname">classification.main_classifier.</code><code class="descname">calculate_cm</code><span class="sig-paren">(</span><em>output</em>, <em>target</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.calculate_cm" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate confussion matrix</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="classification.main_classifier.calculate_cm_torch">
+<code class="descclassname">classification.main_classifier.</code><code class="descname">calculate_cm_torch</code><span class="sig-paren">(</span><em>output</em>, <em>target</em>, <em>num_classes</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.calculate_cm_torch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate confussion matrix</p>
+</dd></dl>
+
 </div>
 </div>
 <div class="section" id="indices-and-tables">
