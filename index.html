@@ -34,7 +34,8 @@
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -78,16 +79,13 @@
               
             
             
-              <!-- Local TOC -->
-              <div class="local-toc"><ul>
-<li><a class="reference internal" href="#">Welcome to IAFlash Lab’s documentation!</a></li>
-<li><a class="reference internal" href="#contents">Contents</a><ul>
-<li><a class="reference internal" href="#module-classification.main_classifier">Main app</a></li>
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="detection.html">Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">Visualization</a></li>
 </ul>
-</li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
-</ul>
-</div>
+
             
           
         </div>
@@ -154,42 +152,37 @@
 <h1>Welcome to IAFlash Lab’s documentation!<a class="headerlink" href="#welcome-to-iaflash-lab-s-documentation" title="Permalink to this headline">¶</a></h1>
 <div class="toctree-wrapper compound">
 </div>
-</div>
 <div class="section" id="contents">
-<h1>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h1>
-<p>Application modules</p>
-<div class="section" id="module-classification.main_classifier">
-<span id="main-app"></span><h2>Main app<a class="headerlink" href="#module-classification.main_classifier" title="Permalink to this headline">¶</a></h2>
-<dl class="class">
-<dt id="classification.main_classifier.AverageMeter">
-<em class="property">class </em><code class="descclassname">classification.main_classifier.</code><code class="descname">AverageMeter</code><a class="headerlink" href="#classification.main_classifier.AverageMeter" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes and stores the average and current value</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="classification.main_classifier.accuracy">
-<code class="descclassname">classification.main_classifier.</code><code class="descname">accuracy</code><span class="sig-paren">(</span><em>output</em>, <em>target</em>, <em>topk=(1</em>, <em>)</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.accuracy" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes the accuracy over the k top predictions for the specified values of k</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="classification.main_classifier.adjust_learning_rate">
-<code class="descclassname">classification.main_classifier.</code><code class="descname">adjust_learning_rate</code><span class="sig-paren">(</span><em>optimizer</em>, <em>epoch</em>, <em>args</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.adjust_learning_rate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the learning rate to the initial LR decayed by 10 every 30 epochs</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="classification.main_classifier.calculate_cm">
-<code class="descclassname">classification.main_classifier.</code><code class="descname">calculate_cm</code><span class="sig-paren">(</span><em>output</em>, <em>target</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.calculate_cm" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate confussion matrix</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="classification.main_classifier.calculate_cm_torch">
-<code class="descclassname">classification.main_classifier.</code><code class="descname">calculate_cm_torch</code><span class="sig-paren">(</span><em>output</em>, <em>target</em>, <em>num_classes</em><span class="sig-paren">)</span><a class="headerlink" href="#classification.main_classifier.calculate_cm_torch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate confussion matrix</p>
-</dd></dl>
-
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-nvidia-drivers">Install nvidia drivers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-drivers">Install drivers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-nvidia-docker">Install nvidia-docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-docker">Install docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-docker-compose">Install docker-compose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-lab-ia-flash">Install Lab IA Flash</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="detection.html">Detection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="detection.html#module-detection.generator_detection">Custom Generator</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="classification.html#lancement-de-lentrainement">Lancement de l’entraînement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classification.html#main-classifier">Main classifier</a></li>
+<li class="toctree-l2"><a class="reference internal" href="classification.html#visualisation-de-la-matrice-de-resultat">Visualisation de la matrice de résultat</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">Visualization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#arguments">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="visualization.html#csv-path">Csv path</a></li>
+</ul>
+</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="section" id="indices-and-tables">
@@ -206,6 +199,13 @@
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
   
 
   <hr/>

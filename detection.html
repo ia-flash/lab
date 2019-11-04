@@ -1,0 +1,242 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Detection &mdash; IAFlash Lab  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Classification" href="classification.html" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> IAFlash Lab
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Detection</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-detection.generator_detection">Custom Generator</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">Visualization</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">IAFlash Lab</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Detection</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/detection.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="detection">
+<h1>Detection<a class="headerlink" href="#detection" title="Permalink to this headline">¶</a></h1>
+<p>Nous avons mis à disposition le code pour la détection sur github. Il sont sur
+<a class="reference external" href="https://github.com/ia-flash/lab">https://github.com/ia-flash/lab</a></p>
+<p>Dans le répertoire de détection, on peut lancer la commande :</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> iaflash/detection
+<span class="nv">cfg</span><span class="o">=</span>/workspace/mmdetection/configs/retinanet_r50_fpn_1x.py
+<span class="nv">model</span><span class="o">=</span>/model/retina/retinanet_r50_fpn_1x_20181125-7b0c2548.pth
+<span class="nv">gpu</span><span class="o">=</span><span class="m">4</span>
+<span class="c1"># lancement de la detection</span>
+./dist_test.sh <span class="nv">$cfg</span> <span class="nv">$model</span> <span class="nv">$gpu</span>
+</pre></div>
+</div>
+<p>Cela lancera la détection à partir des images de files_trunc. Les résultats
+seront consignés dans la table box_detection. On peut changer ces tables dans
+le script test.py. Le shell dist_test.sh parallélise proprement test.py sur les
+GPU, sans avoir à gérer les process fils dans un script python.</p>
+<p>La connection à la base de données doit être spécifiée dans le fichier de configuration
+/docker/env.list. Cette connection est transparente vis-à-vis du connecteur :
+postgres ou vertica. La dépendance à DSS est évitée, puisqu’on se connecte
+directement au gestionnaire de DB. Il faut seulement (avec DSS par exemple)
+créer le shéma de la table de sortie box_detection.</p>
+<div class="section" id="module-detection.generator_detection">
+<span id="custom-generator"></span><h2>Custom Generator<a class="headerlink" href="#module-detection.generator_detection" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="detection.generator_detection.CustomDataset">
+<em class="property">class </em><code class="descclassname">detection.generator_detection.</code><code class="descname">CustomDataset</code><span class="sig-paren">(</span><em>img_df</em>, <em>root_dir</em>, <em>type=None</em>, <em>ann_file=None</em>, <em>img_prefix=None</em>, <em>img_scale=(1333</em>, <em>800)</em>, <em>size_divisor=32</em>, <em>flip_ratio=0</em>, <em>with_mask=False</em>, <em>with_crowd=False</em>, <em>with_label=True</em>, <em>img_norm_cfg=None</em>, <em>resize_keep_ratio=True</em><span class="sig-paren">)</span><a class="headerlink" href="#detection.generator_detection.CustomDataset" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="method">
+<dt id="detection.generator_detection.CustomDataset.prepare_test_img">
+<code class="descname">prepare_test_img</code><span class="sig-paren">(</span><em>idx</em><span class="sig-paren">)</span><a class="headerlink" href="#detection.generator_detection.CustomDataset.prepare_test_img" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare an image for testing (multi-scale and flipping)</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="classification.html" class="btn btn-neutral float-right" title="Classification" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Cristian Perez
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

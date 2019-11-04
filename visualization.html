@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Search &mdash; IAFlash Lab  documentation</title>
+  <title>Visualization &mdash; IAFlash Lab  documentation</title>
   
 
   
@@ -25,7 +25,6 @@
         <script type="text/javascript" src="_static/underscore.js"></script>
         <script type="text/javascript" src="_static/doctools.js"></script>
         <script type="text/javascript" src="_static/language_data.js"></script>
-        <script type="text/javascript" src="_static/searchtools.js"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
@@ -35,7 +34,8 @@
   <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="#" /> 
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Classification" href="classification.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -62,7 +62,7 @@
 
           
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="#" method="get">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -79,11 +79,15 @@
               
             
             
-              <ul>
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="detection.html">Detection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
-<li class="toctree-l1"><a class="reference internal" href="visualization.html">Visualization</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Visualization</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#arguments">Arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#csv-path">Csv path</a></li>
+</ul>
+</li>
 </ul>
 
             
@@ -129,12 +133,14 @@
     
       <li><a href="index.html">Docs</a> &raquo;</li>
         
-      <li>Search</li>
+      <li>Visualization</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
+            <a href="_sources/visualization.rst.txt" rel="nofollow"> View page source</a>
+          
         
       </li>
     
@@ -146,24 +152,50 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <noscript>
-  <div id="fallback" class="admonition warning">
-    <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
-    </p>
-  </div>
-  </noscript>
+  <div class="section" id="visualization">
+<h1>Visualization<a class="headerlink" href="#visualization" title="Permalink to this headline">¶</a></h1>
+<p>Grâce à iaflash/app/app.py , on peut visualiser un dataset Postgres, Vertica ou
+encore un csv. Il faut lancer un petit serveur flask pour cela, et rediriger le
+port du serveur (<cite>APP_PORT</cite> défini dans iaflash/docker/conf.list) vers celui de
+la machine locale.</p>
+<p>On peut vérifier que l’application est en route en tapant <a class="reference external" href="http://localhost:5000">http://localhost:5000</a>.</p>
+<p>Il y a 2 routes importantes, explore et csv. S’il y a une des colonnes avec
+x1,..,y2 , target ou pred_class, l’application va les afficher automatiquement.</p>
+<div class="section" id="arguments">
+<h2>Arguments<a class="headerlink" href="#arguments" title="Permalink to this headline">¶</a></h2>
+<p>Dans args, on peut mettre les même arguments que filter.py et ainsi choisir la
+table à visualiser et les filtres.</p>
+<p>Exemple sur la table CarteGrise_norm_melt_joined_psql.</p>
+<p><a class="reference external" href="http://localhost:5000/explore?table=cartegrise_norm_melt_joined_psql&amp;project_key=VIT3&amp;connector=postgres&amp;limit=100">http://localhost:5000/explore?table=cartegrise_norm_melt_joined_psql&amp;project_key=VIT3&amp;connector=postgres&amp;limit=100</a></p>
+<p>Cela donne :</p>
+<img alt="_images/app.jpg" src="_images/app.jpg" />
+<p>Il faut séparer les arguments de filter par un <cite>&amp;</cite>.</p>
+</div>
+<div class="section" id="csv-path">
+<h2>Csv path<a class="headerlink" href="#csv-path" title="Permalink to this headline">¶</a></h2>
+<p>Ici args ne reprend pas les arguments de filter car filter fonctionne sur des
+tables SQL et non pas des csv. Pour faire des recherches avancées sur un csv,
+on peut utiliser l’argument query  qui fonctionne comme la méthode de query sur
+une dataframe. Par exemple :</p>
+<p>Si on veut voir les jeux de données en sortie de la commande filter, de la classe 1:
+<a class="reference external" href="http://localhost:5000/csv/model/resnet18-151-refined/test.csv?limit=1000&amp;query=target==1">http://localhost:5000/csv/model/resnet18-151-refined/test.csv?limit=1000&amp;query=target==1</a></p>
+<p>Si on recherche une image:
+<a class="reference external" href="http://localhost:5000/csv/model/resnet18-151-refined/test.csv?query=img_path.str.contains(%2208529_20180115_064334_00018_2%22">http://localhost:5000/csv/model/resnet18-151-refined/test.csv?query=img_path.str.contains(%2208529_20180115_064334_00018_2%22</a>)</p>
+</div>
+</div>
 
-  
-  <div id="search-results">
-  
-  </div>
 
            </div>
            
           </div>
           <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="classification.html" class="btn btn-neutral float-left" title="Classification" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
   
 
   <hr/>
@@ -196,14 +228,7 @@
   
   
     
-  
-  <script type="text/javascript">
-    jQuery(function() { Search.loadIndex("searchindex.js"); });
-  </script>
-  
-  <script type="text/javascript" id="searchindexloader"></script>
    
-
 
 </body>
 </html>

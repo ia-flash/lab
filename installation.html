@@ -1,0 +1,317 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Installation &mdash; IAFlash Lab  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Detection" href="detection.html" />
+    <link rel="prev" title="Welcome to IAFlash Lab’s documentation!" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> IAFlash Lab
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-nvidia-drivers">Install nvidia drivers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-drivers">Install drivers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-nvidia-docker">Install nvidia-docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-docker">Install docker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-docker-compose">Install docker-compose</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#install-lab-ia-flash">Install Lab IA Flash</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="detection.html">Detection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="classification.html">Classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualization.html">Visualization</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">IAFlash Lab</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html">Docs</a> &raquo;</li>
+        
+      <li>Installation</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/installation.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
+<p>Il est nécessaire de disposer d’une machine avec des GPU et un processeur
+puissant, complété par un stockage rapide et sécurisé.  Actuellement, un
+serveur avec 128 Gb de RAM, 4 disques SSD de 4Tb, 4 cartes graphiques Titan V
+permet l’entraînement en un temps raisonnable. Ubuntu 16 serveur est installé,
+la version des pilotes GPU est la 410.78, sous CUDA 10.0.  Les disques SSD sont
+au format standard Ext4.</p>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<p>Here are some examples to get you started.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>sudo apt update <span class="o">&amp;&amp;</span> <span class="se">\</span>
+sudo apt upgrade <span class="o">&amp;&amp;</span> <span class="se">\</span>
+sudo apt install gcc make dkms
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-nvidia-drivers">
+<h2>Install nvidia drivers<a class="headerlink" href="#install-nvidia-drivers" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Download drivers. Drivers version may be different depedending on GPU. Verify the driver number at [nvidia.com](<a class="reference external" href="https://www.nvidia.com/Download/index.aspx?lang=en-us">https://www.nvidia.com/Download/index.aspx?lang=en-us</a>)</p></li>
+</ul>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>wget http://us.download.nvidia.com/XFree86/Linux-x86_64/430.50/NVIDIA-Linux-x86_64-430.50.run
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-drivers">
+<h2>Install drivers<a class="headerlink" href="#install-drivers" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>sudo sh ./NVIDIA-Linux-x86_64-430.50.run  --no-drm --disable-nouveau --dkms --silent --install-libglvnd
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-nvidia-docker">
+<h2>Install nvidia-docker<a class="headerlink" href="#install-nvidia-docker" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">distribution</span><span class="o">=</span><span class="k">$(</span>. /etc/os-release<span class="p">;</span><span class="nb">echo</span> <span class="nv">$ID$VERSION_ID</span><span class="k">)</span>
+curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey <span class="p">|</span> sudo apt-key add -
+curl -s -L https://nvidia.github.io/nvidia-docker/<span class="nv">$distribution</span>/nvidia-docker.list <span class="p">|</span> sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+sudo apt-get update <span class="o">&amp;&amp;</span> sudo apt-get install -y nvidia-container-toolkit
+sudo systemctl restart docker
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Install [nvidia-container-runtime](<a class="reference external" href="https://github.com/NVIDIA/nvidia-container-runtime">https://github.com/NVIDIA/nvidia-container-runtime</a>)</p></li>
+</ul>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>sudo apt-get install nvidia-container-runtime
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>(Optional) In order to use docker-compose with nvidia it’s necessary to add the following settings at <cite>/etc/docker/daemon.json</cite>:</p></li>
+</ul>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="nt">&quot;runtimes&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="nt">&quot;nvidia&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="nt">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;nvidia-container-runtime&quot;</span><span class="p">,</span>
+            <span class="nt">&quot;runtimeArgs&quot;</span><span class="p">:</span> <span class="p">[]</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>References:</dt><dd><ul class="simple">
+<li><p><a class="reference external" href="https://docs.nvidia.com/dgx/nvidia-container-runtime-upgrade/index.html">nvidia docs</a></p></li>
+<li><p><a class="reference external" href="https://github.com/docker/compose/issues/6691">github issue docker compose nvidia</a></p></li>
+</ul>
+</dd>
+</dl>
+</div>
+<div class="section" id="install-docker">
+<h2>Install docker<a class="headerlink" href="#install-docker" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo apt-get remove docker docker-engine docker.io
+sudo apt-get update
+sudo apt-get install <span class="se">\</span>
+    apt-transport-https <span class="se">\</span>
+    ca-certificates <span class="se">\</span>
+    curl <span class="se">\</span>
+    software-properties-common
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="p">|</span> sudo apt-key add -
+sudo add-apt-repository <span class="se">\</span>
+   <span class="s2">&quot;deb [arch=amd64] https://download.docker.com/linux/ubuntu \</span>
+<span class="s2">   </span><span class="k">$(</span>lsb_release -cs<span class="k">)</span><span class="s2"> \</span>
+<span class="s2">   stable&quot;</span>
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+sudo usermod -aG docker <span class="nv">$USER</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-docker-compose">
+<h2>Install docker-compose<a class="headerlink" href="#install-docker-compose" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo curl -L <span class="s2">&quot;https://github.com/docker/compose/releases/download/1.23.0/docker-compose-</span><span class="k">$(</span>uname -s<span class="k">)</span><span class="s2">-</span><span class="k">$(</span>uname -m<span class="k">)</span><span class="s2">&quot;</span> -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+</pre></div>
+</div>
+</div>
+<div class="section" id="install-lab-ia-flash">
+<h2>Install Lab IA Flash<a class="headerlink" href="#install-lab-ia-flash" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/ia-flash/lab.git lab
+<span class="nb">cd</span> lab
+make up
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="detection.html" class="btn btn-neutral float-right" title="Detection" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="index.html" class="btn btn-neutral float-left" title="Welcome to IAFlash Lab’s documentation!" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Cristian Perez
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
