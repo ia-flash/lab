@@ -33,7 +33,7 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx_autodoc_typeh
 # A list of ignored prefixes for module index sorting.
 # modindex_common_prefix = []
 
-autodoc_mock_imports = ['torch', 'torchvision', 'mmcv']
+autodoc_mock_imports = ['torch', 'torchvision', 'mmcv', 'mmdet']
 
 # Napoleon settings
 
