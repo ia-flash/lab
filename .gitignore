@@ -1,6 +1,8 @@
 env.list
 conf.list
 __pycache__
+.mypy_cache
 *.pyc
 *.ipynb
 *.egg-info
+docs/build

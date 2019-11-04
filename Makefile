@@ -47,3 +47,9 @@ logs:
 
 test:
 	$(COMPOSE) exec torch-notebook pytest 
+
+docs/html:
+	$(COMPOSE) exec torch-notebook make -C /workspace/iaflash/docs html
+
+docs: docs/html
+	echo "Post"
