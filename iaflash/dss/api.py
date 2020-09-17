@@ -6,7 +6,7 @@ import vertica_python
 import psycopg2
 from psycopg2.extras import execute_values
 #import vertica_db_client
-import dataikuapi as dka
+#import dataikuapi as dka
 
 def connect(host, connector ):
 

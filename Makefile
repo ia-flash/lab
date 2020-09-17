@@ -4,7 +4,7 @@
 include docker/conf.list
 
 # compose command to merge production file and and dev/tools overrides
-COMPOSE?=docker-compose -p $(PROJECT_NAME) -f docker-compose.yml
+COMPOSE?=docker-compose -p $(PROJECT_NAME) -f docker-compose.yml --verbose
 
 export COMPOSE
 export APP_PORT
@@ -37,7 +37,7 @@ down:
 	$(COMPOSE) down --remove-orphans
 
 build:
-	$(COMPOSE) build  --no-cache
+	$(COMPOSE) build  #--no-cache
 
 exec:
 	$(COMPOSE) exec torch-notebook bash
@@ -46,7 +46,7 @@ logs:
 	$(COMPOSE) logs -f --tail 50
 
 test:
-	$(COMPOSE) exec torch-notebook pytest 
+	$(COMPOSE) exec torch-notebook pytest
 
 docs/html:
 	$(COMPOSE) exec torch-notebook make -C /workspace/iaflash/docs html
