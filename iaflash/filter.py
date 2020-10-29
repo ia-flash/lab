@@ -26,6 +26,7 @@ radar_type = {
         }
 
 not_null = ['path', 'img_name']
+target = "class"
 
 parser = argparse.ArgumentParser(description='Filter Dataset From DSS and Write it')
 
@@ -66,6 +67,9 @@ parser.add_argument('--radar', metavar='RADAR TYPE',type=str, nargs='+',
 parser.add_argument('--columns', metavar='COLUMNS',type=str, nargs='+',
                     help='Columns to retrieve',default=columns)
 
+parser.add_argument('--target', metavar='TARGET',type=str,
+                    help='column name for the target to predict',default=target)
+
 parser.add_argument('--not-null', type=str, nargs='+',
                     help='Filter those columns if null',default=not_null)
 
@@ -99,7 +103,7 @@ parser.add_argument( '--connector',
 print('Read args')
 
 def main(args):
-
+    assert args.target != 'target', "target is a resereved column's name"
     if (not args.keep) or (not os.path.exists(args.dir)):
         print("Drop and recreate everything in %s ?" %args.dir )
         print('[Y/n]')
@@ -156,7 +160,8 @@ def read_df(args):
         print(args.class_list)
         #class_list = pd.read_csv(os.path.join(args.dir, args.modele_list))
         class_list = pd.read_csv(args.class_list, header=None)
-        conditions += 'class IN ({}) '.format(', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
+        conditions += '{target} IN ({class_list}) '.format(target = args.target,
+                class_list=', '.join(["'{}'".format(i) for i in class_list.values.flatten()]))
 
     print('ok')
     if args.score:
@@ -171,7 +176,8 @@ def read_df(args):
             args.modele = args.modele.split(",")
         if conditions != '':
             conditions += ' AND '
-        conditions += 'class IN ({}) '.format(', '.join(["'%s'"%col for col in  args.modele]))
+        conditions += '{target} IN ({modele}) '.format(target = args.target,
+                            modele=', '.join(["'%s'"%col for col in  args.modele]))
 
     if args.status :
         if type(args.status) is str:
@@ -206,21 +212,24 @@ def read_df(args):
         print(conditions_not_null)
         conditions += conditions_not_null
 
-
     if args.nb_classes:
         if type(args.nb_classes) is str:
             args.nb_classes = args.nb_classes.split(",")
-        group_req = conditions + ' AND ' + "class ILIKE class GROUP BY class  ORDER BY COUNT(class) DESC LIMIT {};".format(args.nb_classes)
-        df = read_dataframe(API_KEY_VIT,VERTICA_HOST,PROJECT_KEY_VIT,
-            args.table,['class, COUNT(class)'],group_req, args.connector)
-        df['class'].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
+        group_req = conditions + ' AND ' + "{target} ILIKE {target} GROUP BY {target}  ORDER BY COUNT({target}) DESC LIMIT {nb_classes};".format(
+            target = args.target, nb_classes= args.nb_classes)
+
+        df = read_dataframe(args.api_key,args.vertica_host,args.project_key,
+            args.table,'"{target}", COUNT("{target}")'.format(target=args.target), group_req,args.limit,args.sampling, args.connector)
+
+        df[args.target].to_csv(os.path.join(args.dir, 'classes.csv'), index=False)
         conditions += ' AND '
-        conditions += 'class IN ({}) '.format(', '.join(["'{}'".format(i) for i in df['class'].tolist()]))
+        conditions += '{target} IN ({list_class}) '.format(target = args.target,
+                list_class= ', '.join(["'{}'".format(i) for i in df[args.target].tolist()]))
 
     #conditions ='join_marque_modele IS NOT NULL AND (DI_StatutDossier=4 OR DI_StatutDossier=6 OR DI_StatutDossier=13) '
     #DSS_HOST = VERTICA_HOST+":1000    print('There is %s images'%df.shape[0])
     df = read_dataframe(args.api_key,args.vertica_host,args.project_key,
-        args.table,args.columns,conditions,args.limit,args.sampling, args.connector)
+        args.table,args.columns + [args.target], conditions,args.limit,args.sampling, args.connector)
 
     df = df[df.notnull()]
     print("Drop duplicates ...")
@@ -240,14 +249,14 @@ def read_df(args):
 
 def create_mapping(args,df):
     #df_class = df.groupby('_rank',sort=True)
-    df_class = df.groupby('class')
+    df_class = df.groupby(args.target)
 
     i = 0
     idx_to_class = {}
 
     for _rank, tmp in df_class:
-        assert tmp['class'].unique().shape[0] == 1
-        class_name = tmp['class'].unique()[0]
+        assert tmp[args.target].unique().shape[0] == 1
+        class_name = tmp[args.target].unique()[0]
         df.loc[tmp.index,'target'] = int(i)
         idx_to_class.update({i:class_name})
         i+=1
