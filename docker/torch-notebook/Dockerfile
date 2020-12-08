@@ -33,10 +33,9 @@ RUN pip3 install -r /workspace/iaflash/docker/torch-notebook/requirements.txt
 
 # install mmcv
 WORKDIR /workspace
-ENV CUDA_HOME=/usr/local/cuda
 RUN git clone https://github.com/open-mmlab/mmcv.git --branch v1.1.1 mmcv
 RUN cd /workspace/mmcv && \
-    MMCV_WITH_OPS=1 pip install -e .
+    MMCV_WITH_OPS=1;CUDA_HOME=/usr/local/cuda pip install -e .
 
 WORKDIR /workspace
 RUN git clone https://github.com/open-mmlab/mmdetection.git --branch v2.4.0 mmdetection

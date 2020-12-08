@@ -113,6 +113,7 @@ class DatasetDataframe(data.Dataset):
         self.cords_frame = df
         self.root_dir = root_dir
         self.samples = list(zip(df['img_path'],df['target'],df[['x1','y1','x2','y2']].values.tolist()))
+
         if len(df) == 0:
             raise(RuntimeError("Found 0 files in dataframe"))
 
@@ -130,7 +131,7 @@ class DatasetDataframe(data.Dataset):
             tuple: (sample, target) where target is class_index of the target class.
         """
         path, target, coords = self.samples[index] # coords [x1,y1,x2,y2]
-
+        #print(index, path, target)
         sample = self.loader(os.path.join(self.root_dir, path))
 
         args = (sample, coords)

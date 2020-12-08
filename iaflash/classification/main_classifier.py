@@ -201,7 +201,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print('Read val csv : %s'%valdir)
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     #dfval = dfval[dfval['x1'].notnull()]
-    dfval = dfval.sample(frac=frac ,replace=False, random_state=123)
+    #dfval = dfval.sample(frac=frac ,replace=False, random_state=123)
     assert (dfval['img_path'].notnull() & dfval['img_path']!='').any()
     assert dfval['target'].max() < args.num_classes , "t >= n_classes : %s"%dfval['target'].max()
     assert dfval['target'].min() >= 0, "t < 0 : %s"% dfval['target'].min()
@@ -506,7 +506,7 @@ def validate(val_loader, model, criterion, args):
             loss = criterion(output, target)
 
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = accuracy(output, target, topk=(1, args.topk))
 
             # confusion matrix
             # confusion = calculate_cm_torch(output, target, args.num_classes)
@@ -541,7 +541,6 @@ def validate(val_loader, model, criterion, args):
                       'Acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
-
 
 
         print("save predictions to %s"%os.path.join(args.path_val_csv))
@@ -705,4 +704,12 @@ nohup python -m iaflash.classification.main_classifier -a resnet18 \
 --workers 16 \
 /model/resnet18-151 > train-151.out &
 
+
+python -m iaflash.classification.main_classifier -a resnet18 \
+    --batch-size 2 --evaluate --resume /model/resnet18-prio/model_best.pth.tar \
+    --dist-url tcp://127.0.0.1:1234 --dist-backend nccl \
+    --multiprocessing-distributed --world-size 1 --rank 0 \
+    --root-dir /vgdata/sources/verbalisations/antai \
+    --workers 1 \
+    --val-csv /model/resnet18-prio/test.csv /model/resnet18-prio
 """
