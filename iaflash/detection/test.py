@@ -1,26 +1,29 @@
 import argparse
 import os.path as osp
-import shutil
+import shutil, time, os
 import tempfile
 import pandas as pd
 
 import mmcv
 import torch
-import torch.distributed as dist
-from mmcv.runner import load_checkpoint, get_dist_info
+from mmcv import Config, DictAction
+from mmcv.cnn import fuse_conv_bn
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
+from mmcv.runner import get_dist_info, init_dist, load_checkpoint
 
-from mmdet.apis import init_dist
-from mmdet.core import results2json, coco_eval
-from mmdet.datasets import build_dataloader, get_dataset
+from mmdet.core import wrap_fp16_model
+from mmdet.datasets import (build_dataloader, build_dataset,
+                            replace_ImageToTensor)
 from mmdet.models import build_detector
+
 
 from iaflash.detection.utils import load_data, chunker, save_result
 from iaflash.environment import ROOT_DIR, TMP_DIR, DSS_DIR, API_KEY_VIT, PROJECT_KEY_VIT, DSS_HOST, VERTICA_HOST
 from iaflash.detection.generator_detection import CustomDataset
 from iaflash.dss.api import read_dataframe, write_dataframe
 
-
+print(os.environ['CUDA_HOME'])
+print(os.environ['CUDA_VISIBLE_DEVICES'])
 
 class_to_keep = ['person','bicycle', 'car',
                 'motorcycle','bus',
@@ -36,7 +39,7 @@ def single_gpu_test(model, data_loader, show=False):
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
     for i, data in enumerate(data_loader):
-        traceback=''
+        traceback = ''
         try :
             with torch.no_grad():
                 result = model(return_loss=False, rescale=not show, **data)
@@ -67,6 +70,7 @@ def multi_gpu_test(model, data_loader, tmpdir=None):
     rank, world_size = get_dist_info()
     if rank == 0:
         prog_bar = mmcv.ProgressBar(len(dataset))
+    time.sleep(2)
     for i, data in enumerate(data_loader):
         traceback = ''
         try :
@@ -107,11 +111,25 @@ def main():
     args = parse_args()
     modele= osp.splitext(osp.basename(args.config))[0]
     print(modele)
-    cfg = mmcv.Config.fromfile(args.config)
+    cfg = Config.fromfile(args.config)
+    if cfg.get('custom_imports', None):
+        print('custom import')
+        from mmcv.utils import import_modules_from_strings
+        import_modules_from_strings(**cfg['custom_imports'])
     # set cudnn_benchmark
     if cfg.get('cudnn_benchmark', False):
         torch.backends.cudnn.benchmark = True
     cfg.model.pretrained = None
+    if cfg.model.get('neck'):
+        if isinstance(cfg.model.neck, list):
+            for neck_cfg in cfg.model.neck:
+                if neck_cfg.get('rfp_backbone'):
+                    if neck_cfg.rfp_backbone.get('pretrained'):
+                        neck_cfg.rfp_backbone.pretrained = None
+        elif cfg.model.neck.get('rfp_backbone'):
+            if cfg.model.neck.rfp_backbone.get('pretrained'):
+                cfg.model.neck.rfp_backbone.pretrained = None
+
     cfg.data.test.test_mode = True
 
     # init distributed env first, since logger depends on the dist info.
@@ -125,6 +143,11 @@ def main():
         print("distributed")
 
     # build the dataloader
+    samples_per_gpu = cfg.data.test.pop('samples_per_gpu', 1)
+    if samples_per_gpu > 1:
+        # Replace 'ImageToTensor' to 'DefaultFormatBundle'
+        cfg.data.test.pipeline = replace_ImageToTensor(cfg.data.test.pipeline)
+    # build the dataloader
     # TODO: support multiple images per gpu (only minor changes are needed)
     nrows = 100
     chunksize = int(4*1e3)
@@ -135,22 +158,32 @@ def main():
     print(img_df.shape)
 
     # Reprise sur incident
-    img_db = read_dataframe(API_KEY_VIT, VERTICA_HOST, PROJECT_KEY_VIT, log_dataset, columns=['path','img_name'])
-    img_db = img_db.eval('path + img_name').unique()
-    print('there is %s images seen'%len(img_db))
-    img_df = img_df.loc[~img_df.eval('path + img_name').isin(img_db),:]
+    #img_db = read_dataframe(API_KEY_VIT, VERTICA_HOST, PROJECT_KEY_VIT, log_dataset, columns=['path','img_name'])
+    #img_db = img_db.eval('path + img_name').unique()
+    #print('there is %s images seen'%len(img_db))
+    #img_df = img_df.loc[~img_df.eval('path + img_name').isin(img_db),:]
 
     print("Need to process : %s images"%img_df.shape[0])
 
 
     # build the model and load checkpoint
     model = build_detector(cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
+    fp16_cfg = cfg.get('fp16', None)
+    if fp16_cfg is not None:
+        wrap_fp16_model(model)
+    checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
+    # old versions did not save class info in checkpoints, this walkaround is
+    # for backward compatibility
+
     load_checkpoint(model, args.checkpoint, map_location='cpu')
+
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
         #outputs = single_gpu_test(model, data_loader, args.show)
     else:
-        model = MMDistributedDataParallel(model.cuda())
+        model = MMDistributedDataParallel(model.cuda(),
+                        device_ids=[torch.cuda.current_device()],
+                        broadcast_buffers=False)
         #outputs = multi_gpu_test(model, data_loader, args.tmpdir)
 
     for chunk_df in chunker(img_df, chunksize):
@@ -164,7 +197,7 @@ def main():
 
         data_loader = build_dataloader(
             car_dataset,
-            imgs_per_gpu=1,
+            samples_per_gpu=1,
             workers_per_gpu=cfg.data.workers_per_gpu,
             dist=distributed,
             shuffle=False)

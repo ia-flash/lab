@@ -1,16 +1,17 @@
+import os.path as osp
+import warnings
+from collections import OrderedDict
+
 import mmcv
-import os
+import numpy as np
 from torch.utils.data import Dataset
 
-from mmcv.parallel import DataContainer as DC
-
-from mmdet.datasets.transforms import (ImageTransform, BboxTransform, MaskTransform,
-                         Numpy2Tensor)
-
-from mmdet.datasets.utils import to_tensor
+from mmdet.core import eval_map, eval_recalls
+from mmdet.datasets.builder import DATASETS
+from mmdet.datasets.pipelines import Compose
 
 class CustomDataset(Dataset):
-    def __init__(self,img_df, root_dir,
+    def __init__(self,img_df, root_dir,pipeline,
                 type=None,ann_file=None,img_prefix=None,
                 img_scale=(1333, 800),
                 size_divisor=32,
@@ -35,9 +36,7 @@ class CustomDataset(Dataset):
 
         assert mmcv.is_list_of(self.img_scales, tuple)
 
-        self.img_transform = ImageTransform(
-            size_divisor=self.size_divisor, **self.img_norm_cfg)
-
+        self.pipeline = Compose(pipeline)
 
     def __len__(self):
         return self.img_df.shape[0]
@@ -45,43 +44,14 @@ class CustomDataset(Dataset):
     def prepare_test_img(self, idx):
         """Prepare an image for testing (multi-scale and flipping)"""
         row =  self.img_df.iloc[idx]
-        img_path = os.path.join(self.root_dir,row['path'],row['img_name'])
+        img_path = osp.join(self.root_dir,row['path'],row['img_name'])
 
         img = mmcv.imread(img_path)
-        img_info = {'height':img.shape[0] , 'width': img.shape[1]}
+        img_info = {'height':img.shape[0] , 'width': img.shape[1], 'filename':img_path}
+        results = dict(img_info=img_info,
+                    img_prefix=osp.join(self.root_dir,row['path']))
         #print(img_info)
-
-        def prepare_single(img, scale, flip):
-            _img, img_shape, pad_shape, scale_factor = self.img_transform(
-                img, scale, flip, keep_ratio=self.resize_keep_ratio)
-            _img = to_tensor(_img)
-            _img_meta = dict(
-                ori_shape=(img_info['height'], img_info['width'], 3),
-                img_shape=img_shape,
-                pad_shape=pad_shape,
-                scale_factor=scale_factor,
-                flip=flip,
-                img_name=row['img_name'],
-                path=row['path'])
-
-
-            return _img, _img_meta
-
-        imgs = []
-        img_metas = []
-        for scale in self.img_scales:
-            _img, _img_meta = prepare_single(
-                img, scale, False)
-            imgs.append(_img)
-            img_metas.append(DC(_img_meta, cpu_only=True))
-            if self.flip_ratio > 0:
-                _img, _img_meta = prepare_single(
-                    img, scale, True)
-                imgs.append(_img)
-                img_metas.append(DC(_img_meta, cpu_only=True))
-        data = dict(img=imgs, img_meta=img_metas)
-
-        return data
+        return self.pipeline(results)
 
 
     def __getitem__(self, idx):
