@@ -17,7 +17,7 @@ def test_filter_cmd():
     --where '(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')'"""
 
     os.system(cmd)
-    df_train = pd.read_csv('/model/test/train.csv')
+    df_train = pd.read_csv('/model/test2/train.csv')
     assert df_train.shape[0]>10
 
 def test_filter(sampling=0.001, nb_classes=10):
@@ -27,8 +27,8 @@ def test_filter(sampling=0.001, nb_classes=10):
         limit=0,
         where = "(TYPEEQUIP_Libelle='ETC' AND img_name LIKE '%_1.jpg') OR (TYPEEQUIP_Libelle!='ETC')")
 
-    df_train = pd.read_csv('/model/test/train.csv')
-    df_val = pd.read_csv('/model/test/val.csv')
+    df_train = pd.read_csv('/model/test2/train.csv')
+    df_val = pd.read_csv('/model/test2/val.csv')
 
     assert df_train.shape[0]>10
     assert not df_train[['img_path','x1']].isnull().any().any()

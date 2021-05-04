@@ -15,6 +15,7 @@ services:
       - docker/env.list
     environment:
      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
+     - CUDA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES}
      - TORCH_MODEL_ZOO=/model
      - http_proxy=${http_proxy}
      - https_proxy=${http_proxy}
@@ -32,9 +33,8 @@ services:
      - /home/model:/model
      - /home/notebooks:/workspace
      - ./:/workspace/iaflash
-     - /home/${USER}/src/mmdetection/mmdet/datasets:/workspace/mmdetection/mmdet/datasets
-     - /home/${USER}/src/mmdetection/mmdet/core:/workspace/mmdetection/mmdet/core
-
+     #- /home/${USER}/src/mmdetection/mmdet/datasets:/workspace/mmdetection/mmdet/datasets
+     #- /home/${USER}/src/mmdetection/mmdet/core:/workspace/mmdetection/mmdet/core
      - /home/${USER}/src/IIC:/workspace/IIC
      - /home/notebooks/.jupyter:/root/.jupyter
     command:

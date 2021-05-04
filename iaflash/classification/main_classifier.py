@@ -31,6 +31,8 @@ from iaflash.classification.custom_generator import DatasetDataframe, Crop, Squa
 from iaflash.classification.simple_sampler import DistributedSimpleSampler
 from iaflash.classification.utils import gather_evaluation, build_result, parallel2single
 
+# From https://github.com/pytorch/examples/blob/master/imagenet/main.py
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -38,7 +40,6 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
 parser.add_argument('data', metavar='DIR',
                     help='path to csv dataset')
-
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     choices=model_names,
                     help='model architecture: ' +
@@ -57,6 +58,8 @@ parser.add_argument('-b', '--batch-size', default=256, type=int,
                          'using Data Parallel or Distributed Data Parallel')
 parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
                     metavar='LR', help='initial learning rate', dest='lr')
+parser.add_argument('--topk', default=5, type=int,
+                    metavar='TOPK', help='Top k for the accuracy computation', dest='topk')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--wd', '--weight-decay', default=1e-4, type=float,
@@ -87,13 +90,10 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-
 parser.add_argument('--val-csv', default=None, type=str,
                     help='csv to evaluate, default val.csv')
-
 parser.add_argument('--root-dir', default=None, type=str,
                     help='root-dir, default ROOT_DIR')
-
 parser.add_argument('--save-last-deep-layer',action='store_true',
                     help='Save last deep layer')
 best_acc1 = 0
@@ -102,7 +102,6 @@ best_acc1 = 0
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
-
 
 
 # Wrapper of main(), called by python
@@ -129,10 +128,6 @@ def main(args):
 
     args.path_val_csv = os.path.dirname(args.val_csv)
     #args.name_val_csv =  os.path.splitext(os.path.basename(args.val_csv))[0]
-
-    #
-
-
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -186,8 +181,8 @@ def main(args):
     build_result(args.path_val_csv, args.val_csv)
 
 def main_worker(gpu, ngpus_per_node, args):
-
-
+    """
+    """
     global best_acc1
     args.gpu = gpu
 
@@ -206,7 +201,7 @@ def main_worker(gpu, ngpus_per_node, args):
     print('Read val csv : %s'%valdir)
     dfval = pd.read_csv(valdir,usecols=['img_path',  'x1', 'y1', 'x2', 'y2', 'score' ,'target'], index_col=False)
     #dfval = dfval[dfval['x1'].notnull()]
-    dfval = dfval.sample(frac=frac ,replace=False, random_state=123)
+    #dfval = dfval.sample(frac=frac ,replace=False, random_state=123)
     assert (dfval['img_path'].notnull() & dfval['img_path']!='').any()
     assert dfval['target'].max() < args.num_classes , "t >= n_classes : %s"%dfval['target'].max()
     assert dfval['target'].min() >= 0, "t < 0 : %s"% dfval['target'].min()
@@ -225,7 +220,6 @@ def main_worker(gpu, ngpus_per_node, args):
     print(class_weights.shape)
     class_weights = torch.FloatTensor(class_weights.values)
 
-
     if args.distributed:
         if args.dist_url == "env://" and args.rank == -1:
             args.rank = int(os.environ["RANK"])
@@ -240,7 +234,6 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
 
-
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -249,9 +242,7 @@ def main_worker(gpu, ngpus_per_node, args):
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
 
-
     model.fc = nn.Linear(512, args.num_classes) # assuming that the fc7 layer has 512 neurons, otherwise change it
-
 
     # hook the layer4
     if args.save_last_deep_layer:
@@ -294,7 +285,6 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             model = torch.nn.DataParallel(model).cuda()
 
-
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
@@ -327,7 +317,6 @@ def main_worker(gpu, ngpus_per_node, args):
             print("=> no checkpoint found at '{}'".format(args.resume))
 
 
-
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss(class_weights).cuda(args.gpu)
 
@@ -337,8 +326,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         print("Use GPU: {} for training".format(args.gpu))
 
-    # Data Loading Code    --multiprocessing-distributed \
-
+    # Data Loading Code
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     #crop = SquareCrop()
@@ -456,7 +444,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         # print(dict(zip(unique, counts)))
 
         # measure accuracy and record loss
-        acc1, acc5 = accuracy(output, target, topk=(1, 5))
+        acc1, acc5 = accuracy(output, target, topk=(1, args.topk))
         # confusion matrix
         losses.update(loss.item(), input.size(0))
         top1.update(acc1[0], input.size(0))
@@ -518,7 +506,7 @@ def validate(val_loader, model, criterion, args):
             loss = criterion(output, target)
 
             # measure accuracy and record loss
-            acc1, acc5 = accuracy(output, target, topk=(1, 5))
+            acc1, acc5 = accuracy(output, target, topk=(1, args.topk))
 
             # confusion matrix
             # confusion = calculate_cm_torch(output, target, args.num_classes)
@@ -553,7 +541,6 @@ def validate(val_loader, model, criterion, args):
                       'Acc@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
                        i, len(val_loader), batch_time=batch_time, loss=losses,
                        top1=top1, top5=top5))
-
 
 
         print("save predictions to %s"%os.path.join(args.path_val_csv))
@@ -717,4 +704,12 @@ nohup python -m iaflash.classification.main_classifier -a resnet18 \
 --workers 16 \
 /model/resnet18-151 > train-151.out &
 
+
+python -m iaflash.classification.main_classifier -a resnet18 \
+    --batch-size 2 --evaluate --resume /model/resnet18-prio/model_best.pth.tar \
+    --dist-url tcp://127.0.0.1:1234 --dist-backend nccl \
+    --multiprocessing-distributed --world-size 1 --rank 0 \
+    --root-dir /vgdata/sources/verbalisations/antai \
+    --workers 1 \
+    --val-csv /model/resnet18-prio/test.csv /model/resnet18-prio
 """

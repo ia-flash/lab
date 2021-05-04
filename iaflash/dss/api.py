@@ -1,12 +1,13 @@
 import requests
 import pandas as pd
 from io import StringIO
+import re
 
 import vertica_python
 import psycopg2
 from psycopg2.extras import execute_values
 #import vertica_db_client
-import dataikuapi as dka
+#import dataikuapi as dka
 
 def connect(host, connector ):
 
@@ -43,14 +44,20 @@ def read_dataframe(apiKey, host, keyProject, dataset_name, columns=[], condition
         if float(sampling) > 0:
             conditions = ' WHERE random() < %s '% sampling
 
-    if len(columns)>0:
-        columns =  ["\"%s\""%col for col in columns]
-        req = """SELECT {columns} FROM "{table}" {conditions}""".format(columns=','.join(columns),
-        table=dataset_name,
-        conditions=conditions)
+    if type(columns) is list:
+        if len(columns)>0:
+            columns =  ["\"%s\""%col for col in columns]
+            req = """SELECT {columns} FROM "{table}" {conditions}""".format(
+            columns=','.join(columns),
+            table=dataset_name,
+            conditions=conditions)
+        else:
+            req = """SELECT * FROM "{table}" {conditions}""".format(table=dataset_name, conditions=conditions)
     else:
-        req = """SELECT * FROM "{table}" {conditions}""".format(table=dataset_name, conditions=conditions)
-
+            req = """SELECT {columns} FROM "{table}" {conditions}""".format(
+            columns=columns,
+            table=dataset_name,
+            conditions=conditions)
 
     if int(limit) > 0:
          req += " LIMIT %s " %int(limit)
