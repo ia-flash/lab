@@ -28,7 +28,7 @@ dev: docker/env.list docker/conf.list
 	$(COMPOSE) up
 
 up: docker/env.list docker/conf.list
-	$(COMPOSE) up -d
+	$(COMPOSE) up -d --force-recreate
 
 stop:
 	$(COMPOSE) stop
@@ -37,10 +37,12 @@ down:
 	$(COMPOSE) down --remove-orphans
 
 build:
-	$(COMPOSE) build  #--no-cache
+	$(COMPOSE) build #--rm --no-cache
 
+remove:
+	$(COMPOSE) rm -f
 exec:
-	$(COMPOSE) exec torch-notebook bash
+	$(COMPOSE) exec iaflash-notebook bash
 
 logs:
 	$(COMPOSE) logs -f --tail 50

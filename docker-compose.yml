@@ -1,10 +1,11 @@
-version: '2.3'
+version: '3.8'
 services:
-   torch-notebook:
-    container_name: ${USER}-iaflash-refactor
+   iaflash-notebook:
+    container_name: ${USER}-iaflash
+    image: iaflash-detectron2:v1
     build:
       context: .
-      dockerfile: ./docker/torch-notebook/Dockerfile
+      dockerfile: ./docker/torch-notebook/Dockerfile-detectron2
       args:
         - http_proxy=${http_proxy}
         - https_proxy=${https_proxy}
@@ -28,21 +29,17 @@ services:
     volumes:
      - /data:/data
      - /vgdata:/vgdata
-     - /data:/workspace/iaflash/data
      - /home/dss:/dss
      - /home/model:/model
-     - /home/notebooks:/workspace
+     - /home/notebooks:/notebooks
      - ./:/workspace/iaflash
-     #- /home/${USER}/src/mmdetection/mmdet/datasets:/workspace/mmdetection/mmdet/datasets
-     #- /home/${USER}/src/mmdetection/mmdet/core:/workspace/mmdetection/mmdet/core
-     - /home/${USER}/src/IIC:/workspace/IIC
      - /home/notebooks/.jupyter:/root/.jupyter
     command:
       - /bin/sh
       - -c
       - |
           python3 ./iaflash/app/app.py &
-          jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/workspace
+          jupyter notebook --ip=0.0.0.0 --no-browser --allow-root --notebook-dir=/notebooks
 
 networks:
   isolated_nw:
